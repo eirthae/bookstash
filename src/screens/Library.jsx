@@ -5,10 +5,17 @@ import { importFiles, summarize } from '../lib/import.js';
 
 // The library: a list of on-device books + a multi-file (bulk) importer. Tapping
 // a book opens the reader. No network, no accounts.
+const SORTS = [
+  { id: 'added', label: 'Last added' },
+  { id: 'title', label: 'A–Z' },
+  { id: 'author', label: 'Author' },
+];
+
 export function LibraryScreen({ works, onReload, onOpen }) {
   const fileInput = useRef(null);
   const [busy, setBusy] = useState(null);   // { done, total, current } while importing
   const [notice, setNotice] = useState(''); // result summary
+  const [sort, setSort] = useState('added');
 
   const pick = () => { if (!busy && fileInput.current) fileInput.current.click(); };
   const onFiles = async (e) => {
@@ -24,7 +31,7 @@ export function LibraryScreen({ works, onReload, onOpen }) {
     setTimeout(() => setNotice(''), 4500);
   };
 
-  const sorted = works ? sortWorks(works, 'added') : null;
+  const sorted = works ? sortWorks(works, sort) : null;
 
   return (
     <div className="screen">
@@ -41,6 +48,14 @@ export function LibraryScreen({ works, onReload, onOpen }) {
 
       {busy && <div className="importbar"><span className="spin" /> Importing {busy.done}/{busy.total}{busy.current ? ` — ${busy.current}` : ''}…</div>}
       {notice && <div className="notice">{notice}</div>}
+
+      {sorted && sorted.length > 0 && (
+        <div className="sortseg">
+          {SORTS.map((s) => (
+            <button key={s.id} className={sort === s.id ? 'on' : ''} onClick={() => setSort(s.id)}>{s.label}</button>
+          ))}
+        </div>
+      )}
 
       <div className="scroll" style={{ padding: '4px 16px 24px' }}>
         {sorted === null ? (

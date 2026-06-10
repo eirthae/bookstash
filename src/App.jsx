@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import Icon from './components/Icon.jsx';
 import { LibraryScreen } from './screens/Library.jsx';
+import { BookDetailScreen } from './screens/BookDetail.jsx';
 import { ReaderScreen } from './screens/Reader.jsx';
 import { SettingsScreen } from './screens/Settings.jsx';
 import { getAllWorks } from './lib/db.js';
@@ -11,7 +12,8 @@ import { getAllWorks } from './lib/db.js';
 export default function App() {
   const [mode, setMode] = useState('dark');
   const [tab, setTab] = useState('library');
-  const [reading, setReading] = useState(null); // the work currently open, or null
+  const [viewing, setViewing] = useState(null); // work whose detail is open, or null
+  const [reading, setReading] = useState(null); // work currently being read, or null
   const [works, setWorks] = useState(null);       // null = still loading
 
   useEffect(() => {
@@ -29,13 +31,17 @@ export default function App() {
       <div className="viewport">
         {reading ? (
           <ReaderScreen work={reading} onBack={() => setReading(null)} />
+        ) : viewing ? (
+          <BookDetailScreen work={viewing} onBack={() => setViewing(null)}
+            onRead={(w) => setReading(w)}
+            onRemoved={() => { setViewing(null); reload(); }} />
         ) : tab === 'library' ? (
-          <LibraryScreen works={works} onReload={reload} onOpen={setReading} />
+          <LibraryScreen works={works} onReload={reload} onOpen={setViewing} />
         ) : (
           <SettingsScreen works={works} mode={mode} setMode={changeMode} />
         )}
       </div>
-      {!reading && (
+      {!reading && !viewing && (
         <nav className="bottomnav">
           <button className={tab === 'library' ? 'on' : ''} onClick={() => setTab('library')}>
             <Icon icon="solar:books-minimalistic-bold" size={22} /> Library

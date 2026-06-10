@@ -151,3 +151,9 @@ input,textarea { font-family:inherit; }
   background:linear-gradient(90deg, rgba(128,128,128,.12) 25%, rgba(128,128,128,.26) 37%, rgba(128,128,128,.12) 63%);
   background-size:400% 100%; animation:shimmer 1.5s ease-in-out infinite; }
 @keyframes shimmer { 0% { background-position:100% 50%; } 100% { background-position:0 50%; } }
+
+/* ---- library sort segment ------------------------------------------------- */
+.sortseg { display:flex; gap:6px; margin:0 16px 10px; flex-wrap:wrap; }
+.sortseg button { padding:7px 14px; border-radius:999px; font-size:12.5px; font-weight:600;
+  background:var(--surface-elevated); border:1px solid var(--border); color:var(--text-secondary); }
+.sortseg button.on { background:var(--accent-soft); border-color:transparent; color:var(--accent); }
