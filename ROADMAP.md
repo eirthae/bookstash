@@ -34,9 +34,15 @@ real-device testing.
   on-device), a library list, and a basic reader (chapter nav). → *MVP: import
   your own books and read them offline.* Reader polish (themes, fonts, resume
   position) and library sort/shelves come in Phase 2.
-- [ ] **Phase 2 — Library + discovery filters.** Shelves, sort/filter, the
+- [~] **Phase 2 — Library + discovery filters.** Shelves, sort/filter, the
   global include/exclude filters UI (language / excluded tags / length / status),
-  tag-group model on local storage.
+  tag-group model on local storage. *(2a done: sort + detail + delete.)*
+  - **Book discovery = Goodreads reader-tag shelves** (notify-only: basic info +
+    a link; you source the file). Proven in FicStash — `parse_shelf` +
+    `/shelf/show/<tag>` (AND = intersect include shelves) and a curated
+    reader-tag **autocomplete** vocabulary. Port the parser to JS for the
+    on-device fetcher; reuse the tag vocabulary verbatim. (Open Library's
+    catalogue subjects were too stiff for reader tags — dropped.)
 - [ ] **Phase 3 — Links & fetching (spike first).** On-device fetching of a
   pasted link / list of links (AO3 / Royal Road / Scribble Hub / generic). RISK:
   needs cross-origin fetch (Capacitor native HTTP) + parsers ported to JS. Prove
