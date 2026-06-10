@@ -1,0 +1,8 @@
+{
+  "appId": "com.bookstash.app",
+  "appName": "BookStash",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0c0c0e"
+  }
+}

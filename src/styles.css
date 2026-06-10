@@ -1,0 +1,93 @@
+/* ============================================================================
+   BookStash — design tokens + base styles (shared look with the FicStash family)
+   Two independent theming layers will exist:
+     1. App color mode  → [data-mode="dark|light"] on .app-root
+     2. Reader theme     → [data-reader-theme="..."] on .reader (added with the reader)
+   ========================================================================== */
+:root {
+  --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --radius-xl:22px; --radius-full:9999px;
+  --font-sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-serif:"Lora",Georgia,"Times New Roman",serif;
+  --tag-fandom:#9353d3; --tag-relationship:#f31260; --tag-character:#006fee;
+  --tag-freeform:#17c964; --tag-warning:#f5a524;
+}
+
+/* ---- app color mode: DARK (default) -------------------------------------- */
+.app-root, [data-mode="dark"] {
+  --bg:#0c0c0e; --surface:#0c0c0e; --surface-elevated:#19191c; --surface-2:#252529; --surface-3:#34343a;
+  --text-primary:#f3f3f4; --text-secondary:#a1a1aa; --text-tertiary:#71717a;
+  --accent:#a072de; --accent-strong:#9353d3; --accent-soft:rgba(147,83,211,0.18); --accent-fg:#fff;
+  --border:rgba(255,255,255,0.09); --border-strong:rgba(255,255,255,0.14); --overlay:rgba(0,0,0,0.62);
+  --success:#45d483; --success-soft:rgba(23,201,100,0.16);
+  --warning:#f7b750; --warning-soft:rgba(245,165,36,0.16);
+  --danger:#f54180;  --danger-soft:rgba(243,18,96,0.16);
+  --info:#338ef7;    --info-soft:rgba(0,111,238,0.16);
+  --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  --shadow-pop:0 8px 40px -8px rgba(0,0,0,.75), 0 2px 8px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+
+/* ---- app color mode: LIGHT ----------------------------------------------- */
+[data-mode="light"] {
+  --bg:#f3f3f5; --surface:#f3f3f5; --surface-elevated:#fff; --surface-2:#fff; --surface-3:#ececef;
+  --text-primary:#16181c; --text-secondary:#5b5d66; --text-tertiary:#8a8c95;
+  --accent:#7828c8; --accent-strong:#6020a0; --accent-soft:rgba(120,40,200,0.10); --accent-fg:#fff;
+  --border:rgba(17,17,17,0.09); --border-strong:rgba(17,17,17,0.14); --overlay:rgba(20,18,28,0.42);
+  --success:#12a150; --success-soft:rgba(23,201,100,0.14);
+  --warning:#c4841d; --warning-soft:rgba(245,165,36,0.18);
+  --danger:#c20e4d;  --danger-soft:rgba(243,18,96,0.10);
+  --info:#005bc4;    --info-soft:rgba(0,111,238,0.10);
+  --shadow-card:0 1px 2px rgba(16,18,28,.05), 0 12px 28px -16px rgba(16,18,28,.22);
+  --shadow-pop:0 12px 48px -10px rgba(16,18,28,.28), 0 2px 8px rgba(16,18,28,.08);
+  color-scheme:light;
+}
+
+/* ---- base ----------------------------------------------------------------- */
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body,#root { margin:0; height:100%; }
+body { font-family:var(--font-sans); overflow:hidden; background:#08080a; }
+button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+input,textarea { font-family:inherit; }
+::-webkit-scrollbar { width:0; height:0; }
+* { scrollbar-width:none; -ms-overflow-style:none; }
+
+/* ---- app shell ------------------------------------------------------------ */
+.app-root {
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  height:100dvh; width:100%;
+  background:var(--surface); color:var(--text-primary);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* Responsive: on tablets/desktop, cap to a centered column instead of stretching
+   edge-to-edge (the tablet polish, baked in from day one). */
+@media (min-width:760px) {
+  body { background:#000; }
+  .app-root { position:relative; inset:auto; margin:0 auto; max-width:600px;
+    border-left:1px solid var(--border); border-right:1px solid var(--border); }
+}
+
+.viewport { position:relative; flex:1; min-height:0; overflow:hidden; background:var(--surface); }
+.screen { position:absolute; inset:0; display:flex; flex-direction:column; overflow:hidden; background:var(--surface); }
+.scroll { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+
+.appbar { flex:none; padding:calc(14px + env(safe-area-inset-top)) 20px 12px; }
+.appbar .title { font-size:30px; font-weight:800; letter-spacing:-.02em; }
+.appbar .sub { font-size:13px; color:var(--text-tertiary); margin-top:2px; }
+
+/* bottom nav */
+.bottomnav { flex:none; display:flex; padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  background:var(--surface-elevated); border-top:1px solid var(--border); }
+.bottomnav button { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:7px 0; font-size:11px; font-weight:600; color:var(--text-tertiary); }
+.bottomnav button.on { color:var(--accent); }
+
+/* empty state */
+.empty { display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:100%; text-align:center; padding:0 40px; gap:10px; }
+.empty .e-ic { width:64px; height:64px; border-radius:20px; display:flex; align-items:center;
+  justify-content:center; background:var(--accent-soft); color:var(--accent); margin-bottom:4px; }
+.empty .e-t { font-size:18px; font-weight:700; }
+.empty .e-d { font-size:13.5px; color:var(--text-secondary); line-height:1.5; max-width:280px; }
+
+.badge { display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px;
+  background:var(--accent-soft); color:var(--accent); letter-spacing:.02em; }
