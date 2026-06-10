@@ -41,6 +41,14 @@ real-device testing.
   pasted link / list of links (AO3 / Royal Road / Scribble Hub / generic). RISK:
   needs cross-origin fetch (Capacitor native HTTP) + parsers ported to JS. Prove
   feasibility before committing.
+  - **Un-fetchable works → clear label + "read on AO3" link, never a silent
+    fail.** BookStash is public and runs logged-out (no AO3 account, no stored
+    creds), so a **login-restricted** AO3 work (author limited it to registered
+    users) can't be downloaded. When the fetcher hits that redirect, show a card
+    like "🔒 This work is restricted to AO3 members — open it on AO3" with the
+    canonical work URL as a tappable link, instead of a stuck/empty entry. (Adult
+    Explicit/Mature works are NOT restricted — set the `view_adult` cookie
+    client-side and they fetch normally.)
 - [ ] **Phase 4 — Backup + polish + F-Droid.** Export/import, optional cloud
   sync, final responsive/polish pass, and F-Droid packaging.
 
