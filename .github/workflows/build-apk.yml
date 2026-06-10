@@ -52,17 +52,8 @@ jobs:
 
       - name: Generate app icons (book glyph on primary-200 background)
         run: |
-          # ImageMagick is preinstalled on ubuntu-latest. Render the foreground
-          # glyph (transparent), a solid #c9a9e9 background, a flattened icon, and
-          # a branded splash — then let @capacitor/assets fan them out to all
-          # Android densities + adaptive icons.
-          convert -background none -density 384 resources/icon-foreground.svg -resize 1024x1024 resources/icon-foreground.png
-          convert -size 1024x1024 xc:'#c9a9e9' resources/icon-background.png
-          convert resources/icon-background.png resources/icon-foreground.png -gravity center -composite resources/icon-only.png
-          convert -background none -density 384 resources/icon-foreground.svg -resize 820x820 /tmp/splash-fg.png
-          convert -size 2732x2732 xc:'#c9a9e9' resources/splash.png
-          convert resources/splash.png /tmp/splash-fg.png -gravity center -composite resources/splash.png
-          cp resources/splash.png resources/splash-dark.png
+          npm i -D sharp
+          node scripts/gen-icons.mjs
           npx --yes @capacitor/assets generate --android --assetPath resources
 
       - name: Sync web bundle into Android
