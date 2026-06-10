@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import Icon from './components/Icon.jsx';
 import { LibraryScreen } from './screens/Library.jsx';
+import { DiscoverScreen } from './screens/Discover.jsx';
 import { BookDetailScreen } from './screens/BookDetail.jsx';
 import { ReaderScreen } from './screens/Reader.jsx';
 import { SettingsScreen } from './screens/Settings.jsx';
@@ -50,6 +51,8 @@ export default function App() {
             onRemoved={() => { setViewing(null); reload(); }} />
         ) : tab === 'library' ? (
           <LibraryScreen works={works} onReload={reload} onOpen={setViewing} />
+        ) : tab === 'discover' ? (
+          <DiscoverScreen />
         ) : (
           <SettingsScreen works={works} mode={mode} setMode={changeMode} onAbout={() => setAbout(true)} />
         )}
@@ -58,6 +61,9 @@ export default function App() {
         <nav className="bottomnav">
           <button className={tab === 'library' ? 'on' : ''} onClick={() => setTab('library')}>
             <Icon icon="solar:books-minimalistic-bold" size={22} /> Library
+          </button>
+          <button className={tab === 'discover' ? 'on' : ''} onClick={() => setTab('discover')}>
+            <Icon icon="solar:magnifer-bold" size={22} /> Discover
           </button>
           <button className={tab === 'settings' ? 'on' : ''} onClick={() => setTab('settings')}>
             <Icon icon="solar:settings-bold" size={22} /> Settings

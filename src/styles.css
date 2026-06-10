@@ -214,3 +214,13 @@ input,textarea { font-family:inherit; }
 .add-note.warn { background:var(--warning-soft); color:var(--text-secondary); }
 .add-note.ok { background:var(--success-soft); color:var(--success); }
 .linklike { color:var(--accent); font-weight:700; margin-left:6px; }
+
+/* Discover: reader-tag chips + autocomplete */
+.chiprow { display:flex; flex-wrap:wrap; gap:7px; }
+.chip { display:inline-flex; align-items:center; gap:5px; padding:6px 11px; border-radius:999px;
+  font-size:12.5px; font-weight:600; background:var(--surface-2); color:var(--text-secondary); border:1px solid var(--border); }
+.chip.chip-on { background:var(--accent-soft); color:var(--accent-strong); border-color:transparent; }
+.suggestions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.sugg { padding:6px 11px; border-radius:999px; font-size:12.5px; background:var(--surface-2);
+  color:var(--text-secondary); border:1px solid var(--border); }
+.sugg:active { background:var(--accent-soft); color:var(--accent-strong); }

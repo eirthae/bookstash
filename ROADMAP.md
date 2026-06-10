@@ -36,17 +36,22 @@ real-device testing.
   position) and library sort/shelves come in Phase 2.
 - [~] **Phase 2 — Library + discovery filters.** Shelves, sort/filter, the
   global include/exclude filters UI (language / excluded tags / length / status),
-  tag-group model on local storage. *(2a done: sort + detail + delete.)*
+  tag-group model on local storage. *(2a done: sort + detail + delete. 2c done
+  (v0.6.0): Discover screen — Goodreads reader-tag book search, notify-only.)*
   - **Book discovery = Goodreads reader-tag shelves** (notify-only: basic info +
     a link; you source the file). Proven in FicStash — `parse_shelf` +
     `/shelf/show/<tag>` (AND = intersect include shelves) and a curated
     reader-tag **autocomplete** vocabulary. Port the parser to JS for the
     on-device fetcher; reuse the tag vocabulary verbatim. (Open Library's
     catalogue subjects were too stiff for reader tags — dropped.)
-- [ ] **Phase 3 — Links & fetching (spike first).** On-device fetching of a
+- [~] **Phase 3 — Links & fetching (spike first).** On-device fetching of a
   pasted link / list of links (AO3 / Royal Road / Scribble Hub / generic). RISK:
   needs cross-origin fetch (Capacitor native HTTP) + parsers ported to JS. Prove
-  feasibility before committing.
+  feasibility before committing. *(3a done (v0.5.0): generic add-by-link via
+  CapacitorHttp + Readability single-page extraction — awaiting on-device
+  confirmation. The Discover Goodreads fetch (v0.6.0) shares this fetch layer, so
+  it doubles as a second on-device proof. 3b — site-specific AO3/RR/SH
+  multi-chapter parsers — pending that confirmation.)*
   - **Un-fetchable works → clear label + "read on AO3" link, never a silent
     fail.** BookStash is public and runs logged-out (no AO3 account, no stored
     creds), so a **login-restricted** AO3 work (author limited it to registered
