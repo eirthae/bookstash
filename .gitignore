@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # Capacitor native platform (generated in CI by `cap add android`)
 android/
+
+# Generated app-icon/splash PNGs (built in CI from resources/icon-foreground.svg)
+resources/*.png

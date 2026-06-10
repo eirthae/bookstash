@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- BookStash mark: a book, in deep brand purple, on the lavender (primary-200)
+       background. Kept within the adaptive-icon safe zone (centre ~66%). -->
+  <g>
+    <!-- back cover / pages shadow -->
+    <rect x="356" y="318" width="330" height="396" rx="26" fill="#2e0e54"/>
+    <!-- front cover -->
+    <rect x="338" y="310" width="330" height="396" rx="26" fill="#481878"/>
+    <!-- spine -->
+    <rect x="338" y="310" width="52" height="396" rx="22" fill="#2e0e54"/>
+    <!-- bookmark ribbon -->
+    <path d="M566 310 h54 v150 l-27 -30 -27 30 z" fill="#c9a9e9"/>
+    <!-- title lines -->
+    <rect x="432" y="470" width="170" height="22" rx="11" fill="#ffffff" opacity="0.92"/>
+    <rect x="432" y="520" width="120" height="22" rx="11" fill="#ffffff" opacity="0.6"/>
+  </g>
+</svg>
