@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test \"src/**/*.test.js\"",
+    "test": "node --test",
     "preview": "vite preview",
     "cap:add": "cap add android",
     "cap:sync": "cap sync android",
