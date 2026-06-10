@@ -1,6 +1,8 @@
-const APP_VERSION = '0.2.0';
+import Icon from '../components/Icon.jsx';
 
-export function SettingsScreen({ works, mode, setMode }) {
+const APP_VERSION = '0.4.0';
+
+export function SettingsScreen({ works, mode, setMode, onAbout }) {
   const count = works ? works.length : 0;
   const totalWords = works ? works.reduce((s, w) => s + (w.words || 0), 0) : 0;
 
@@ -31,6 +33,15 @@ export function SettingsScreen({ works, mode, setMode }) {
             </div>
           </div>
         </Section>
+
+        <button onClick={onAbout} className="set-card" style={{ marginTop: 18, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Icon icon="solar:heart-bold" size={20} color="var(--accent)" />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 600 }}>About &amp; Support</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>The story behind BookStash · leave a tip</div>
+          </div>
+          <Icon icon="solar:alt-arrow-right-linear" size={18} color="var(--text-tertiary)" />
+        </button>
 
         <div className="set-card" style={{ marginTop: 8 }}>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>BookStash</div>
