@@ -29,9 +29,11 @@ real-device testing.
   (color mode, bottom nav, Library/Settings stubs), shared design tokens,
   responsive root, CI (build + tests → APK), and the first tested pure logic
   (`urlref`, `filters`). Docs.
-- [ ] **Phase 1 — On-device storage + reader + bulk upload.** SQLite data layer
-  (works/chapters), port the reader (resume position, themes, fonts), and
-  in-app multi-file EPUB/HTML/TXT import. → *MVP: read your own books offline.*
+- [x] **Phase 1 — On-device storage + bulk upload + basic reader.** IndexedDB
+  data layer (`works`/`chapters`), in-app multi-file EPUB/HTML/TXT import (parsed
+  on-device), a library list, and a basic reader (chapter nav). → *MVP: import
+  your own books and read them offline.* Reader polish (themes, fonts, resume
+  position) and library sort/shelves come in Phase 2.
 - [ ] **Phase 2 — Library + discovery filters.** Shelves, sort/filter, the
   global include/exclude filters UI (language / excluded tags / length / status),
   tag-group model on local storage.

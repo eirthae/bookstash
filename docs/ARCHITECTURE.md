@@ -29,11 +29,18 @@ fetch a link.
 - **Legal footing:** it's a personal download/reader tool (like Calibre), not a
   service that redistributes others' content.
 
-## Storage (Phase 1)
-- SQLite via `@capacitor-community/sqlite` (with a web/wasm fallback for `dev`).
-- Tables mirror the proven FicStash model: `works` (metadata) + `chapters`
-  (per-chapter text), plus tracked groups and discovery prefs.
+## Storage (Phase 1) — IndexedDB
+- The on-device database is **IndexedDB** (`src/lib/db.js`), not a native SQLite
+  plugin. Why: it's built into the WebView (no plugin, no Android build config),
+  handles large text/blobs (full chapter HTML), works identically in `dev` (the
+  browser) and on-device, and is therefore testable in a real browser.
+- Two stores mirror the proven FicStash model: `works` (one record per book,
+  metadata + chapter count) and `chapters` (keyed by `[workId, n]`, holding the
+  chapter HTML, with a `byWork` index). Tracked groups + discovery prefs land in
+  later phases.
 - Reading position & app settings: Capacitor `Preferences` (survives cold starts).
+- Trade-off vs SQLite: no SQL, so list/sort/filter logic lives in JS (`db.js`,
+  `filters.js`) — which is exactly the part we unit-test.
 
 ## Files vs links
 - **Files** (EPUB/HTML/TXT): parsed *on the device* at import — self-contained,
