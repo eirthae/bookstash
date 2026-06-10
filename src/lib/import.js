@@ -1,5 +1,7 @@
 import { parseFile, isSupportedUpload } from './epub.js';
 import { addWork } from './db.js';
+import { fetchHtml } from './fetch.js';
+import { extractArticle } from './extract.js';
 
 // Import one file into the on-device library. Returns a per-file result so the
 // bulk caller can show "12 added, 1 skipped" with reasons.
@@ -29,6 +31,44 @@ export async function importFiles(files, onProgress) {
   }
   if (onProgress) onProgress({ done: list.length, total: list.length });
   return results;
+}
+
+// Add a work by pasting a link: fetch the page (native HTTP, on-device),
+// extract the readable article, and store it as a 1-chapter offline work.
+// Returns { ok, work? } or { ok:false, error?, restricted?, url? }.
+export async function importLink(url) {
+  const clean = (url || '').trim();
+  if (!/^https?:\/\/\S+\.\S+/i.test(clean)) return { ok: false, error: 'Enter a full link starting with http(s)://' };
+
+  let res;
+  try {
+    res = await fetchHtml(clean);
+  } catch (e) {
+    return { ok: false, error: 'Couldn’t reach that page — check your connection.' };
+  }
+
+  // AO3 (and similar) bounce members-only works to a login URL. We run logged
+  // out, so surface a "read on AO3" result rather than a broken import.
+  if (/\/users\/login\?[^ ]*restricted=true/i.test(res.url || '')) {
+    return { ok: false, restricted: true, url: clean, error: 'This work is restricted to AO3 members — open it on AO3.' };
+  }
+  if (!res.html || res.status >= 400) {
+    return { ok: false, error: `Couldn’t load that page (HTTP ${res.status || '?'}).` };
+  }
+
+  let art;
+  try {
+    art = extractArticle(res.html, clean);
+  } catch (e) {
+    return { ok: false, error: 'Couldn’t read that page.' };
+  }
+  if (!art.content || art.words < 5) return { ok: false, error: 'No readable text found on that page.' };
+
+  const work = await addWork(
+    { title: art.title, author: art.author || '', summary: '', source: 'link', url: clean },
+    [{ n: 1, title: art.title, content: art.content, words: art.words }],
+  );
+  return { ok: true, work };
 }
 
 // Summarize a batch of results for a toast/notice.

@@ -195,3 +195,22 @@ input,textarea { font-family:inherit; }
 /* ---- about & support ------------------------------------------------------ */
 .about-body { font-size:14.5px; line-height:1.66; color:var(--text-secondary); white-space:pre-wrap; }
 .about-body b, .about-body strong { color:var(--text-primary); }
+
+/* ---- add sheet (upload / link) -------------------------------------------- */
+.bs-sheet-backdrop { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.45); }
+.bs-sheet { position:fixed; left:0; right:0; bottom:0; z-index:61; max-width:600px; margin:0 auto;
+  background:var(--surface-elevated); color:var(--text-primary); border-radius:20px 20px 0 0;
+  padding:18px 20px calc(20px + env(safe-area-inset-bottom)); box-shadow:var(--shadow-pop); animation:rsheetin .25s ease; }
+.bs-sheet-title { font-size:17px; font-weight:700; margin-bottom:14px; }
+.add-row { display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:13px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface-2); }
+.add-row > div { display:flex; flex-direction:column; min-width:0; }
+.add-row b { font-size:14.5px; font-weight:700; } .add-row span { font-size:12px; color:var(--text-tertiary); }
+.add-or { display:flex; align-items:center; gap:10px; margin:16px 0; color:var(--text-tertiary); font-size:12px; }
+.add-or:before, .add-or:after { content:''; flex:1; height:1px; background:var(--border); }
+.searchfield { display:flex; align-items:center; gap:10px; height:48px; padding:0 14px; border-radius:var(--radius-md); background:var(--surface-2); border:1px solid var(--border); }
+.searchfield input { flex:1; border:none; outline:none; background:transparent; color:var(--text-primary); font-size:15px; min-width:0; }
+.add-note { font-size:12.5px; padding:9px 12px; border-radius:var(--radius-md); margin-bottom:10px; line-height:1.45; }
+.add-note.err { background:var(--danger-soft); color:var(--danger); }
+.add-note.warn { background:var(--warning-soft); color:var(--text-secondary); }
+.add-note.ok { background:var(--success-soft); color:var(--success); }
+.linklike { color:var(--accent); font-weight:700; margin-left:6px; }

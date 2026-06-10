@@ -82,6 +82,7 @@ export async function addWork(meta, chapters, addedAt) {
     series: meta.series || '',
     seriesIndex: meta.seriesIndex ?? null,
     source: meta.source || 'upload',
+    url: meta.url || '', // canonical link for works added by URL (open original)
     words: total,
     chapters: (chapters || []).length,
     status: meta.status || 'complete',

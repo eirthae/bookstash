@@ -4,5 +4,8 @@
   "webDir": "dist",
   "android": {
     "backgroundColor": "#0c0c0e"
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
   }
 }
