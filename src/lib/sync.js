@@ -1,6 +1,7 @@
 import { getAllWorks, appendChapters, recordChapterUpdate, updateWork, getGroups, patchGroup, upsertMatches } from './db.js';
 import { fetchWork, searchTags } from './sources/ao3.js';
 import { fetchUpdates as rrFetchUpdates } from './sources/royalroad.js';
+import { fetchUpdates as shFetchUpdates } from './sources/scribblehub.js';
 import { discoverBooks } from './goodreads.js';
 
 // On-device sync engine. This is the job FicStash's server worker does, run on
@@ -17,8 +18,9 @@ export async function triggerSync({ onProgress } = {}) {
   let works;
   try { works = await getAllWorks(); } catch (e) { return { ok: false, error: 'Storage unavailable' }; }
 
-  // Followed = ongoing AO3 / Royal Road works we have a source id for.
-  const ongoing = (works || []).filter((w) => (w.source === 'ao3' || w.source === 'royalroad') && w.status !== 'complete' && w.sourceId);
+  // Followed = ongoing AO3 / Royal Road / Scribble Hub works with a source id.
+  const RECHECK = new Set(['ao3', 'royalroad', 'scribblehub']);
+  const ongoing = (works || []).filter((w) => RECHECK.has(w.source) && w.status !== 'complete' && w.sourceId);
   let newChapters = 0, checked = 0, failed = 0;
 
   for (const w of ongoing) {
@@ -33,8 +35,8 @@ export async function triggerSync({ onProgress } = {}) {
         if (fresh.restricted) continue;
         total = fresh.chapters || 0; status = fresh.status;
         if (total > stored) newChs = (fresh.chaptersData || []).filter((c) => c.n > stored);
-      } else { // royalroad — re-read fiction page, fetch only chapters beyond stored
-        const upd = await rrFetchUpdates(w.sourceId, stored);
+      } else { // royalroad / scribblehub — re-read index page, fetch chapters beyond stored
+        const upd = await (w.source === 'royalroad' ? rrFetchUpdates : shFetchUpdates)(w.sourceId, stored);
         total = upd.total; status = upd.status; newChs = upd.newChapters;
       }
       if (newChs.length) {

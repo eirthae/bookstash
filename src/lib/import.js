@@ -4,6 +4,7 @@ import { fetchHtml } from './fetch.js';
 import { extractArticle } from './extract.js';
 import { isAo3Url, workIdFromUrl, fetchWork as fetchAo3Work } from './sources/ao3.js';
 import { isRrUrl, workIdFromUrl as rrWorkId, fetchWork as fetchRrWork } from './sources/royalroad.js';
+import { isShUrl, workIdFromUrl as shWorkId, fetchWork as fetchShWork } from './sources/scribblehub.js';
 
 // Import one file into the on-device library. Returns a per-file result so the
 // bulk caller can show "12 added, 1 skipped" with reasons.
@@ -65,6 +66,17 @@ export async function importLink(url) {
       return { ok: true, work };
     } catch (e) {
       return { ok: false, error: (e && e.message) ? `Couldn’t read that Royal Road work (${e.message}).` : 'Couldn’t read that Royal Road work.' };
+    }
+  }
+
+  // Scribble Hub — dedicated parser (series page + every chapter body).
+  if (isShUrl(clean) && shWorkId(clean)) {
+    try {
+      const w = await fetchShWork(shWorkId(clean));
+      const work = await addWork(w, w.chaptersData);
+      return { ok: true, work };
+    } catch (e) {
+      return { ok: false, error: (e && e.message) ? `Couldn’t read that Scribble Hub work (${e.message}).` : 'Couldn’t read that Scribble Hub work.' };
     }
   }
 
