@@ -62,8 +62,11 @@ export async function shelfBooks(tag, limit = 50) {
 }
 
 // Pure set-logic core (testable without network): intersect include-shelf
-// results (AND), fall back to the primary shelf if the intersection is empty,
-// drop anything on an exclude shelf, preserve the primary shelf's order.
+// results (AND), drop anything on an exclude shelf, preserve the primary shelf's
+// order. If a multi-tag search's tags never co-occur we return nothing rather
+// than dumping the primary shelf's unrelated books — otherwise a "gay romance +
+// magic school" search whose tags don't overlap would surface plain magic-school
+// books (Harry Potter), reading as the wrong genre entirely.
 export function combineShelves(shelves, excludeIdSets = [], limit = 30) {
   const lists = (shelves || []).filter((l) => Array.isArray(l) && l.length);
   if (!lists.length) return [];
@@ -74,7 +77,6 @@ export function combineShelves(shelves, excludeIdSets = [], limit = 30) {
     const set = new Set(list.map((b) => b.id));
     ids = new Set([...ids].filter((i) => set.has(i)));
   }
-  if (!ids.size) ids = new Set(lists[0].map((b) => b.id)); // fallback: primary shelf
   for (const ex of excludeIdSets) ex.forEach((i) => ids.delete(i));
   return lists[0].map((b) => b.id).filter((i) => ids.has(i)).slice(0, limit).map((i) => byId[i]);
 }

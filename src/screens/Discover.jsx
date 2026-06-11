@@ -72,7 +72,7 @@ export function DiscoverScreen() {
         {state.kind === 'idle' && (
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 22, lineHeight: 1.6 }}>
             BookStash doesn’t download books here — it points you to them.<br />
-            Find one you like, then add it from <b>Library → Add</b>.
+            Find one you like, get it in <b>EPUB</b>, then add it from <b>Library → Add</b> to read it offline.
           </div>
         )}
       </div>

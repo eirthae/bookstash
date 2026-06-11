@@ -54,10 +54,10 @@ test('combineShelves intersects include shelves (AND)', () => {
   assert.deepEqual(out.map((x) => x.id), ['2', '3']); // primary order preserved
 });
 
-test('combineShelves falls back to primary when intersection is empty', () => {
+test('combineShelves returns nothing when include tags do not co-occur', () => {
   const a = [{ id: '1' }, { id: '2' }];
   const b = [{ id: '8' }, { id: '9' }];
-  assert.deepEqual(combineShelves([a, b]).map((x) => x.id), ['1', '2']);
+  assert.deepEqual(combineShelves([a, b]), []); // no fallback to the primary shelf
 });
 
 test('combineShelves drops excluded ids', () => {

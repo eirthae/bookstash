@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Icon from '../components/Icon.jsx';
 import { getChapters } from '../lib/db.js';
-import { getReadingPos, saveReadingPos } from '../lib/reading.js';
+import { getReadingPos, getChapterPos, saveReadingPos } from '../lib/reading.js';
 
 export const READER_THEMES = [
   { value: 'dark', label: 'Dark', bg: '#121214', fg: '#cfcfd4' },
@@ -19,7 +19,8 @@ export function ReaderScreen({ work, settings, setSettings, onBack }) {
   const [chapters, setChapters] = useState(null);
   const savedPos = useRef(getReadingPos(work.id));
   const positionedFor = useRef(null); // the `cur` we've scrolled into place
-  const didRestore = useRef(false);   // saved scroll applied once
+  const positioned = useRef(new Set()); // chapters already placed this mount
+  const lastPct = useRef(savedPos.current ? savedPos.current.pct || 0 : 0); // latest scroll fraction
   const saveTimer = useRef(null);
   const scrollRef = useRef(null);
   const [cur, setCur] = useState((savedPos.current && savedPos.current.chapter) || 1);
@@ -36,17 +37,16 @@ export function ReaderScreen({ work, settings, setSettings, onBack }) {
   const total = chapters ? chapters.length : (work.chapters || 1);
   const ch = chapters ? (chapters.find((c) => c.n === cur) || chapters[0]) : null;
 
-  // Position once per chapter, after its body renders: the first chapter restores
-  // the saved scroll fraction (≈ where you left off); others start at the top.
+  // Position once per chapter, after its body renders: each chapter restores ITS
+  // OWN saved scroll fraction, so reading ahead and coming back returns you to
+  // where you were — not the top.
   useEffect(() => {
     if (positionedFor.current === cur) return;
     if (chapters === null) return;            // still loading
     if (chapters.length && !(ch && ch.content != null)) return;
     positionedFor.current = cur;
-    let pct = 0;
-    const sp = savedPos.current;
-    if (!didRestore.current && sp && sp.chapter === cur && (sp.pct || 0) > 0) pct = sp.pct;
-    didRestore.current = true;
+    positioned.current.add(cur);
+    let pct = getChapterPos(work.id, cur);
     let tries = 0;
     const apply = () => {
       const n = scrollRef.current; if (!n) return;
@@ -60,11 +60,20 @@ export function ReaderScreen({ work, settings, setSettings, onBack }) {
   const onScroll = (e) => {
     const el = e.target; const max = el.scrollHeight - el.clientHeight;
     const pct = max > 0 ? Math.min(1, el.scrollTop / max) : 0;
+    lastPct.current = pct;
     if (chrome) setChrome(false);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => saveReadingPos(work.id, { chapter: cur, pct }), 350);
   };
-  const go = (n) => { if (n >= 1 && n <= total) { setCur(n); saveReadingPos(work.id, { chapter: n, pct: 0 }); } };
+  const go = (n) => {
+    if (n < 1 || n > total) return;
+    // Bank where we are in the chapter we're leaving, then point resume at the
+    // new chapter without losing any scroll it already had.
+    saveReadingPos(work.id, { chapter: cur, pct: lastPct.current });
+    saveReadingPos(work.id, { chapter: n, pct: getChapterPos(work.id, n) });
+    lastPct.current = getChapterPos(work.id, n);
+    setCur(n);
+  };
 
   const font = READER_FONTS.find((f) => f.value === settings.font) || READER_FONTS[0];
   const articleStyle = { '--r-font': font.css, '--r-size': (settings.size || 18) + 'px' };
