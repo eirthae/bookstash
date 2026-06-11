@@ -100,14 +100,24 @@ export async function addWork(meta, chapters, addedAt) {
     author: meta.author || '',
     summary: meta.summary || '',
     language: meta.language || '',
+    fandom: meta.fandom || '',                          // for the Fics-shelf cards/grouping
+    pairing: meta.pairing || (Array.isArray(meta.tags) ? (meta.tags.find((t) => t.k === 'relationship') || {}).t : '') || '',
+    tags: Array.isArray(meta.tags) ? meta.tags : [],    // [{ t, k }] relationship/character/freeform
     series: meta.series || '',
     seriesIndex: meta.seriesIndex ?? null,
+    ao3SeriesId: meta.ao3SeriesId || '',
     source: meta.source || 'upload',
-    url: meta.url || '', // canonical link for works added by URL (open original)
-    words: total,
+    sourceId: meta.sourceId || '',                      // work id at the source (for refresh/follow/dedupe)
+    url: meta.url || '',                                // canonical link (open original)
+    words: meta.words || total,
     chapters: (chapters || []).length,
+    chaptersTotal: meta.chaptersTotal ?? ((chapters || []).length || null),
     status: meta.status || 'complete',
+    // Ongoing works are followed by default so a sync re-checks them for new
+    // chapters — same rule as FicStash.
+    follow: (meta.status && meta.status !== 'complete') || false,
     addedAt: addedAt || new Date().toISOString(),
+    sourceUpdated: meta.updated || null,
   };
   const t = tx(db, ['works', 'chapters'], 'readwrite');
   t.objectStore('works').put(work);

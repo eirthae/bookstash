@@ -2,6 +2,7 @@ import { parseFile, isSupportedUpload } from './epub.js';
 import { addWork } from './db.js';
 import { fetchHtml } from './fetch.js';
 import { extractArticle } from './extract.js';
+import { isAo3Url, workIdFromUrl, fetchWork as fetchAo3Work } from './sources/ao3.js';
 
 // Import one file into the on-device library. Returns a per-file result so the
 // bulk caller can show "12 added, 1 skipped" with reasons.
@@ -39,6 +40,21 @@ export async function importFiles(files, onProgress) {
 export async function importLink(url) {
   const clean = (url || '').trim();
   if (!/^https?:\/\/\S+\.\S+/i.test(clean)) return { ok: false, error: 'Enter a full link starting with http(s)://' };
+
+  // AO3 links use the dedicated parser (clean title/author/summary/tags/series +
+  // every chapter) instead of the generic single-page extractor.
+  if (isAo3Url(clean) && workIdFromUrl(clean)) {
+    try {
+      const w = await fetchAo3Work(workIdFromUrl(clean));
+      if (w.restricted) {
+        return { ok: false, restricted: true, url: clean, error: 'This work is restricted to AO3 members — open it on AO3.' };
+      }
+      const work = await addWork(w, w.chaptersData);
+      return { ok: true, work };
+    } catch (e) {
+      return { ok: false, error: (e && e.message) ? `Couldn’t read that AO3 work (${e.message}).` : 'Couldn’t read that AO3 work.' };
+    }
+  }
 
   let res;
   try {
