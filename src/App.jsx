@@ -7,7 +7,7 @@ import { WhatsNewScreen } from './screens/WhatsNew.jsx';
 import { DiscoverScreen } from './screens/Discover.jsx';
 import { StoryDetailScreen } from './screens/Detail.jsx';
 import { ReaderScreen } from './screens/Reader.jsx';
-import { SettingsScreen } from './screens/Settings.jsx';
+import { SettingsScreen, ConnectScreen } from './screens/Settings.jsx';
 import { AboutScreen } from './screens/About.jsx';
 import { fetchWorks } from './lib/library.js';
 
@@ -17,7 +17,8 @@ const READER_DEFAULTS = { theme: 'dark', font: 'serif', size: 19, leading: 1.70,
 // (IndexedDB), the work fetched/parsed on the phone. A FicStash-style nav stack
 // drives Library → Detail → Reader, with a bottom nav + centered "+".
 export default function App() {
-  const [mode, setMode] = useState('dark');
+  const [appMode, setAppMode] = useState('dark'); // dark | light | system
+  const [systemDark, setSystemDark] = useState(() => !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches));
   const [reader, setReader] = useState(READER_DEFAULTS);
   const [works, setWorks] = useState(null);      // null = still loading
   const [addOpen, setAddOpen] = useState(false);
@@ -35,14 +36,23 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
-    Preferences.get({ key: 'bs-mode' }).then(({ value }) => { if (alive && value) setMode(value); }).catch(() => {});
+    Preferences.get({ key: 'bs-mode' }).then(({ value }) => { if (alive && value) setAppMode(value); }).catch(() => {});
     Preferences.get({ key: 'bs-reader' }).then(({ value }) => {
       if (alive && value) { try { setReader((r) => ({ ...r, ...JSON.parse(value) })); } catch (e) {} }
     }).catch(() => {});
     return () => { alive = false; };
   }, []);
-  const changeMode = (m) => { setMode(m); Preferences.set({ key: 'bs-mode', value: m }).catch(() => {}); };
+  // Track the OS color scheme so the "System" mode follows the phone.
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const fn = (e) => setSystemDark(e.matches);
+    mq.addEventListener ? mq.addEventListener('change', fn) : mq.addListener(fn);
+    return () => { mq.removeEventListener ? mq.removeEventListener('change', fn) : mq.removeListener(fn); };
+  }, []);
+  const changeMode = (m) => { setAppMode(m); Preferences.set({ key: 'bs-mode', value: m }).catch(() => {}); };
   const updateReader = (next) => { setReader(next); Preferences.set({ key: 'bs-reader', value: JSON.stringify(next) }).catch(() => {}); };
+  const resolvedMode = appMode === 'system' ? (systemDark ? 'dark' : 'light') : appMode;
 
   const reload = useCallback(() => { fetchWorks().then((w) => setWorks(w || [])).catch(() => setWorks([])); }, []);
   useEffect(() => { reload(); }, [reload]);
@@ -60,7 +70,7 @@ export default function App() {
     if (tab === 'library') return <LibraryScreen works={works} onRemove={removeFromLibrary} onReload={reload} refreshKey={refreshKey} nav={n} />;
     if (tab === 'whatsnew') return <WhatsNewScreen chapters={[]} matches={[]} nav={n} />;
     if (tab === 'discover') return <DiscoverScreen />;
-    return <SettingsScreen works={works} mode={mode} setMode={changeMode} onAbout={() => n.push('about')} />;
+    return <SettingsScreen appMode={appMode} setAppMode={changeMode} nav={n} />;
   };
   const renderTop = () => {
     const n = nav.current, p = top.props || {};
@@ -71,11 +81,12 @@ export default function App() {
     }
     if (top.screen === 'reader') return <ReaderScreen work={p.work} workId={p.workId} chapterN={p.chapterN} chapterTitle={p.chapterTitle} settings={reader} setSettings={updateReader} nav={n} />;
     if (top.screen === 'about') return <AboutScreen onBack={n.pop} />;
+    if (top.screen === 'connect') return <ConnectScreen nav={n} />;
     return null;
   };
 
   return (
-    <div className="app-root" data-mode={mode}>
+    <div className="app-root" data-mode={resolvedMode}>
       <div className="viewport">
         {renderTab()}
         {top && <div className="screen" style={{ zIndex: 30 }}>{renderTop()}</div>}

@@ -73,6 +73,14 @@ export async function updateWorkFields(workId, fields) {
   if (Object.keys(patch).length) await updateWork(workId, patch);
 }
 
+// Offline-library stats for Settings. Every on-device work is fully downloaded,
+// so downloaded === total.
+export async function fetchOfflineStats() {
+  const rows = await getAllWorks();
+  const total = (rows || []).length;
+  return { total, downloaded: total, words: (rows || []).reduce((s, r) => s + (r.words || 0), 0) };
+}
+
 // Existing series names (for the edit-sheet autocomplete).
 export async function fetchSeriesNames() {
   const rows = await getAllWorks();
