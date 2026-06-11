@@ -3,6 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 import { BottomNav } from './components/chrome.jsx';
 import { AddMenu } from './components/AddMenu.jsx';
 import { LibraryScreen } from './screens/Library.jsx';
+import { WhatsNewScreen } from './screens/WhatsNew.jsx';
 import { DiscoverScreen } from './screens/Discover.jsx';
 import { StoryDetailScreen } from './screens/Detail.jsx';
 import { ReaderScreen } from './screens/Reader.jsx';
@@ -57,13 +58,14 @@ export default function App() {
   const renderTab = () => {
     const n = nav.current;
     if (tab === 'library') return <LibraryScreen works={works} onRemove={removeFromLibrary} onReload={reload} refreshKey={refreshKey} nav={n} />;
+    if (tab === 'whatsnew') return <WhatsNewScreen chapters={[]} matches={[]} nav={n} />;
     if (tab === 'discover') return <DiscoverScreen />;
     return <SettingsScreen works={works} mode={mode} setMode={changeMode} onAbout={() => n.push('about')} />;
   };
   const renderTop = () => {
     const n = nav.current, p = top.props || {};
     if (top.screen === 'detail') {
-      return <StoryDetailScreen work={p.work} nav={n}
+      return <StoryDetailScreen work={p.work} suggestion={p.suggestion} onSaved={p.onSaved} nav={n}
         onRemoved={(id) => (p.onRemoved || removeFromLibrary)(id)}
         onReload={reload} />;
     }

@@ -1,4 +1,9 @@
-// Saving a Discover *suggestion* into the library. On-device this becomes a real
-// fetch + store via the sync engine (engine phase); for now it's a no-op so the
-// ported Detail's suggestion path resolves. Library works are already saved.
+// What's New + suggestion-save data. On-device these are produced by the sync
+// engine (followed-work chapter updates + tracked-tag matches). Until that lands
+// they return empty/no-op so the ported What's New + Detail screens render.
+export async function fetchNewChapters() { return []; }
+export async function fetchNewMatches() { return []; }
+export async function markChapterUpdateSeen() { return { ok: true }; }
+export async function markMatchSeen() { return { ok: true }; }
+export async function dismissMatch() { return { ok: true }; }
 export async function requestSave() { return { ok: true }; }
