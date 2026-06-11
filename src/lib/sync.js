@@ -1,6 +1,7 @@
 import { getAllWorks, appendChapters, recordChapterUpdate, updateWork, getGroups, patchGroup, upsertMatches, addWork } from './db.js';
-import { fetchWork, searchTags, seriesWorks } from './sources/ao3.js';
+import { fetchWork, searchTags, searchLanguage, seriesWorks } from './sources/ao3.js';
 import { getAllFollowedSeries, removeFollowedSeries } from './series.js';
+import { fetchDiscoveryPrefs } from './discovery.js';
 import { fetchUpdates as rrFetchUpdates } from './sources/royalroad.js';
 import { fetchUpdates as shFetchUpdates } from './sources/scribblehub.js';
 import { discoverBooks } from './goodreads.js';
@@ -57,34 +58,49 @@ export async function triggerSync({ onProgress } = {}) {
     }
   }
 
-  // ---- tracked-tag discovery: search each AO3 group, store new matches ------
+  // ---- tracked-tag discovery: search each group, store new matches ----------
+  // Global discovery prefs (preferred languages / excluded tags) filter matches.
+  let prefs = { languages: [], excludedTags: [] };
+  try { prefs = await fetchDiscoveryPrefs(); } catch (e) { /* defaults */ }
+  const exclSet = new Set((prefs.excludedTags || []).map((t) => (t.name || t).toLowerCase()));
+  const langSet = new Set((prefs.languages || []).flatMap((l) => [l.native, l.english].filter(Boolean).map((s) => s.toLowerCase())));
+  const passesPrefs = (m, isLanguageGroup) => {
+    if (exclSet.size && (m.tags || []).some((t) => exclSet.has((t.t || '').toLowerCase()))) return false;
+    // Language allowlist applies to tag groups only (a language group IS its language).
+    if (!isLanguageGroup && langSet.size && m.language && !langSet.has(m.language.toLowerCase())) return false;
+    return true;
+  };
+
   let newMatches = 0;
   let groups = [];
   try { groups = await getGroups(); } catch (e) { groups = []; }
   for (const g of groups) {
     const source = g.source || 'ao3';
     if (source !== 'ao3' && source !== 'books') continue; // RR/SH discovery needs their parsers (later)
+    const langGroup = (g.tags || []).find((t) => t.kind === 'language');
     const include = (g.tags || []).filter((t) => t.kind !== 'language').map((t) => t.name).filter(Boolean);
-    if (!include.length) continue; // language-browse groups need a different search
+    if (!langGroup && !include.length) continue;
     const exclude = (g.excludedTags || []).map((t) => t.name).filter(Boolean);
     await sleep(SPACE_MS);
     let metas = [];
     try {
       if (source === 'books') {
-        // Goodreads book discovery (notify-only): id/title/author/link.
         const books = await discoverBooks(include, exclude);
         metas = books.map((b) => ({
           source: 'books', sourceId: b.id, title: b.title, author: b.author,
           summary: '', fandom: '', tags: [], status: 'complete', words: 0, url: b.url,
         }));
+      } else if (langGroup) {
+        metas = await searchLanguage(langGroup.id || langGroup.name);
       } else if (g.matchMode === 'any' && include.length > 1) {
         for (const t of include) { metas.push(...await searchTags([t], exclude)); await sleep(800); }
       } else {
         metas = await searchTags(include, exclude);
       }
     } catch (e) { /* skip this group */ }
+    metas = metas.filter((m) => passesPrefs(m, !!langGroup));
     try {
-      newMatches += await upsertMatches(g.id, metas.map((m) => ({ ...m, tag: g.label || include[0] })));
+      newMatches += await upsertMatches(g.id, metas.map((m) => ({ ...m, tag: g.label || include[0] || (langGroup && (langGroup.name)) || 'Tracked' })));
       await patchGroup(g.id, { lastChecked: new Date().toISOString() });
     } catch (e) { /* non-fatal */ }
   }

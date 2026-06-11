@@ -243,6 +243,22 @@ export async function searchTags(include, exclude = [], page = 1) {
   }
 }
 
+// Browse a whole AO3 language (newest first) — for "Browse by language" groups.
+export async function searchLanguage(code, page = 1) {
+  if (!code) return [];
+  const p = new URLSearchParams();
+  p.set('work_search[language_id]', String(code));
+  p.set('work_search[sort_column]', 'created_at');
+  if (page > 1) p.set('page', String(page));
+  try {
+    const r = await fetchHtml(`https://${AO3_HOST}/works/search?${p.toString()}`);
+    if (!r || r.status !== 200) return [];
+    return parseSearchResults(r.html);
+  } catch (e) {
+    return [];
+  }
+}
+
 // AO3 tag autocomplete (the JSON endpoint), for the tracker's tag picker.
 export async function autocompleteTag(term) {
   const q = String(term || '').trim();
