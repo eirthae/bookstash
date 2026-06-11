@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { BottomNav } from './components/chrome.jsx';
 import { AddMenu } from './components/AddMenu.jsx';
@@ -8,22 +8,29 @@ import { BookDetailScreen } from './screens/BookDetail.jsx';
 import { ReaderScreen } from './screens/Reader.jsx';
 import { SettingsScreen } from './screens/Settings.jsx';
 import { AboutScreen } from './screens/About.jsx';
-import { getAllWorks } from './lib/db.js';
+import { fetchWorks } from './lib/library.js';
 
 const READER_DEFAULTS = { theme: 'dark', font: 'serif', size: 18 };
 
-// BookStash — local-first reader. On-device library (IndexedDB), bulk import,
-// reader with resume position + themes/fonts, and About & Support. All on device.
+// BookStash — local-first reader, sharing FicStash's UI/UX. On-device library
+// (IndexedDB), the work fetched/parsed on the phone. A FicStash-style nav stack
+// drives Library → Detail → Reader, with a bottom nav + centered "+".
 export default function App() {
   const [mode, setMode] = useState('dark');
-  const [tab, setTab] = useState('library');
-  const [viewing, setViewing] = useState(null); // work whose detail is open
-  const [reading, setReading] = useState(null); // work being read
-  const [about, setAbout] = useState(false);    // About & Support screen
+  const [reader, setReader] = useState(READER_DEFAULTS);
   const [works, setWorks] = useState(null);      // null = still loading
-  const [reader, setReader] = useState(READER_DEFAULTS); // reader theme/font/size
-  const [addOpen, setAddOpen] = useState(false); // the bottom-nav "+" Add menu
-  const [notice, setNotice] = useState('');      // transient Library result toast
+  const [addOpen, setAddOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Navigation: a tab + a stack of pushed screens (detail / reader / about).
+  const [tab, setTab] = useState('library');
+  const [stack, setStack] = useState([]);
+  const nav = useRef();
+  nav.current = {
+    push: (screen, props = {}) => setStack((s) => [...s, { screen, props }]),
+    pop: () => setStack((s) => s.slice(0, -1)),
+    reset: (t) => { setStack([]); setTab(t); },
+  };
 
   useEffect(() => {
     let alive = true;
@@ -36,43 +43,43 @@ export default function App() {
   const changeMode = (m) => { setMode(m); Preferences.set({ key: 'bs-mode', value: m }).catch(() => {}); };
   const updateReader = (next) => { setReader(next); Preferences.set({ key: 'bs-reader', value: JSON.stringify(next) }).catch(() => {}); };
 
-  const reload = useCallback(() => { getAllWorks().then((w) => setWorks(w || [])).catch(() => setWorks([])); }, []);
+  const reload = useCallback(() => { fetchWorks().then((w) => setWorks(w || [])).catch(() => setWorks([])); }, []);
   useEffect(() => { reload(); }, [reload]);
 
-  // After an Add (upload/link): reload the library, jump to it, flash a notice.
-  const onAdded = (msg) => {
-    reload();
-    setTab('library');
-    if (msg) { setNotice(msg); setTimeout(() => setNotice(''), 4500); }
-  };
+  const removeFromLibrary = (id) => setWorks((ws) => (ws || []).filter((w) => w.id !== id));
+  const onAdded = () => { reload(); setRefreshKey((k) => k + 1); setStack([]); setTab('library'); };
 
-  const fullscreen = reading || viewing || about; // hide the bottom nav on these
+  const switchTab = (id) => { setStack([]); setAddOpen(false); setTab(id); };
+
+  const top = stack[stack.length - 1];
+  const showNav = !top;
+
+  const renderTab = () => {
+    const n = nav.current;
+    if (tab === 'library') return <LibraryScreen works={works} onRemove={removeFromLibrary} onReload={reload} refreshKey={refreshKey} nav={n} />;
+    if (tab === 'discover') return <DiscoverScreen />;
+    return <SettingsScreen works={works} mode={mode} setMode={changeMode} onAbout={() => n.push('about')} />;
+  };
+  const renderTop = () => {
+    const n = nav.current, p = top.props || {};
+    if (top.screen === 'detail') {
+      return <BookDetailScreen work={p.work} onBack={n.pop}
+        onRead={(w) => n.push('reader', { work: w })}
+        onRemoved={(id) => { (p.onRemoved || removeFromLibrary)(id); n.pop(); }} />;
+    }
+    if (top.screen === 'reader') return <ReaderScreen work={p.work} settings={reader} setSettings={updateReader} onBack={n.pop} />;
+    if (top.screen === 'about') return <AboutScreen onBack={n.pop} />;
+    return null;
+  };
 
   return (
     <div className="app-root" data-mode={mode}>
       <div className="viewport">
-        {reading ? (
-          <ReaderScreen work={reading} settings={reader} setSettings={updateReader} onBack={() => setReading(null)} />
-        ) : about ? (
-          <AboutScreen onBack={() => setAbout(false)} />
-        ) : viewing ? (
-          <BookDetailScreen work={viewing} onBack={() => setViewing(null)}
-            onRead={(w) => setReading(w)}
-            onRemoved={() => { setViewing(null); reload(); }} />
-        ) : tab === 'library' ? (
-          <LibraryScreen works={works} onOpen={setViewing} onAdd={() => setAddOpen(true)} notice={notice} />
-        ) : tab === 'discover' ? (
-          <DiscoverScreen />
-        ) : (
-          <SettingsScreen works={works} mode={mode} setMode={changeMode} onAbout={() => setAbout(true)} />
-        )}
+        {renderTab()}
+        {top && <div className="screen" style={{ zIndex: 30 }}>{renderTop()}</div>}
       </div>
-      {!fullscreen && (
-        <BottomNav active={tab}
-          onTab={(id) => { setAddOpen(false); setTab(id); }}
-          onAdd={() => setAddOpen((o) => !o)} addActive={addOpen} />
-      )}
-      {!fullscreen && <AddMenu open={addOpen} onClose={() => setAddOpen(false)} onChanged={onAdded} />}
+      {showNav && <BottomNav active={tab} onTab={switchTab} onAdd={() => setAddOpen((o) => !o)} addActive={addOpen} />}
+      {showNav && <AddMenu open={addOpen} onClose={() => setAddOpen(false)} onChanged={onAdded} />}
     </div>
   );
 }

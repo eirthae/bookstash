@@ -7,6 +7,22 @@
 // (Older builds stored { chapter, pct } — entry() migrates that on the fly.)
 const POS_KEY = 'bs-readpos';
 
+// "Last read" tracking — when a work is opened in the reader we stamp the time
+// here (per device). The library's "Last read" sort reads this map. (Same as
+// FicStash's reading.js.)
+const LAST_KEY = 'bs-lastread';
+export function getLastRead() {
+  try { return JSON.parse(localStorage.getItem(LAST_KEY) || '{}'); } catch { return {}; }
+}
+export function markRead(workId) {
+  if (!workId) return;
+  try {
+    const m = getLastRead();
+    m[workId] = new Date().toISOString();
+    localStorage.setItem(LAST_KEY, JSON.stringify(m));
+  } catch { /* storage unavailable — non-fatal */ }
+}
+
 function readAll() {
   try { return JSON.parse(localStorage.getItem(POS_KEY) || '{}'); } catch { return {}; }
 }
