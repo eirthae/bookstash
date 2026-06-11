@@ -1,5 +1,6 @@
-import { getAllWorks, appendChapters, recordChapterUpdate, updateWork, getGroups, patchGroup, upsertMatches } from './db.js';
-import { fetchWork, searchTags } from './sources/ao3.js';
+import { getAllWorks, appendChapters, recordChapterUpdate, updateWork, getGroups, patchGroup, upsertMatches, addWork } from './db.js';
+import { fetchWork, searchTags, seriesWorks } from './sources/ao3.js';
+import { getAllFollowedSeries, removeFollowedSeries } from './series.js';
 import { fetchUpdates as rrFetchUpdates } from './sources/royalroad.js';
 import { fetchUpdates as shFetchUpdates } from './sources/scribblehub.js';
 import { discoverBooks } from './goodreads.js';
@@ -88,7 +89,47 @@ export async function triggerSync({ onProgress } = {}) {
     } catch (e) { /* non-fatal */ }
   }
 
-  return { ok: true, newChapters, newMatches, checked, failed };
+  // ---- followed / requested AO3 series → download their works ---------------
+  // "Download all" (one-shot) and "Follow series" both queue a series here; we
+  // enumerate it and pull any work not already on-device, tagging each with the
+  // series so the Fics shelf auto-groups it. Capped per run for politeness.
+  let seriesAdded = 0;
+  let followedSeries = [];
+  try { followedSeries = getAllFollowedSeries(); } catch (e) { followedSeries = []; }
+  if (followedSeries.length) {
+    const SERIES_MAX = 12;
+    for (const s of followedSeries) {
+      let list = [];
+      try { await sleep(SPACE_MS); list = await seriesWorks(s.seriesId); } catch (e) { continue; }
+      if (!list.length) continue;
+      const cur = await getAllWorks();
+      const bySource = new Map(cur.filter((w) => w.source === 'ao3' && w.sourceId).map((w) => [w.sourceId, w]));
+      let got = 0, hitCap = false;
+      for (let i = 0; i < list.length; i += 1) {
+        const wk = list[i];
+        const existing = bySource.get(wk.id);
+        if (existing) { // already have it — make sure it's tagged with this series
+          try { await updateWork(existing.id, { series: s.name, ao3SeriesId: s.seriesId, seriesIndex: i + 1 }); } catch (e) { /* non-fatal */ }
+          continue;
+        }
+        if (got >= SERIES_MAX) { hitCap = true; break; }
+        try {
+          await sleep(SPACE_MS);
+          const fresh = await fetchWork(wk.id);
+          if (fresh.restricted) continue;
+          fresh.series = s.name || fresh.series;
+          fresh.ao3SeriesId = s.seriesId;
+          fresh.seriesIndex = i + 1;
+          await addWork(fresh, fresh.chaptersData);
+          got += 1; seriesAdded += 1;
+        } catch (e) { /* skip one work */ }
+      }
+      // A one-shot "Download all" drops out once everything's pulled.
+      if (!s.follow && !hitCap) { try { removeFollowedSeries(s.seriesId); } catch (e) { /* non-fatal */ } }
+    }
+  }
+
+  return { ok: true, newChapters, newMatches, seriesAdded, checked, failed };
 }
 
 // Fire-and-forget sync kick (used after queueing a download/follow).

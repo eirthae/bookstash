@@ -159,3 +159,16 @@ test('parseSearchResults parses a work blurb', () => {
   assert.equal(r[0].status, 'ongoing');
   assert.deepEqual(r[0].tags.filter((t) => t.k === 'relationship').map((t) => t.t), ['Ahsoka & Obi-Wan']);
 });
+
+// --- series enumeration ----------------------------------------------------
+const { parseSeriesWorkIds } = await import('./ao3.js');
+const SERIES_PAGE = `
+<ul class="series work index group">
+  <li class="work blurb group"><div class="header"><h4 class="heading"><a href="/works/111">First</a> by <a rel="author">a</a></h4></div></li>
+  <li class="work blurb group"><div class="header"><h4 class="heading"><a href="/works/222">Second</a> by <a rel="author">a</a></h4></div></li>
+</ul>`;
+test('parseSeriesWorkIds lists work ids in order', () => {
+  const r = parseSeriesWorkIds(SERIES_PAGE);
+  assert.deepEqual(r.map((w) => w.id), ['111', '222']);
+  assert.equal(r[0].title, 'First');
+});

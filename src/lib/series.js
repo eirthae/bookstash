@@ -23,6 +23,18 @@ export async function requestSeriesDownload(seriesId, seriesName = '') {
   return { ok: true };
 }
 
+// Every queued/followed series — for the sync engine. follow=false rows are
+// one-shot "download all" requests; follow=true rows keep being re-checked.
+export function getAllFollowedSeries() {
+  const m = readAll();
+  return Object.entries(m).map(([seriesId, r]) => ({ seriesId, name: r.name || '', follow: !!r.follow }));
+}
+// Drop a series from the queue (after a one-shot download completes).
+export function removeFollowedSeries(seriesId) {
+  const m = readAll();
+  if (m[String(seriesId)]) { delete m[String(seriesId)]; writeAll(m); }
+}
+
 // Toggle "follow this series" (keep watching for newly-added works).
 export async function setSeriesFollow(seriesId, seriesName, follow) {
   if (!seriesId) return { ok: false, error: 'No series id' };

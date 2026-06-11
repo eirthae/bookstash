@@ -144,6 +144,44 @@ export async function fetchWork(id) {
   return parseWork(r.html, wid);
 }
 
+// ---- series enumeration (Download all / Follow series) ----------------------
+const _sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Pure parser: an AO3 /series/<id> page → [{ id, title }] in series order.
+export function parseSeriesWorkIds(html) {
+  const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+  const ul = doc.querySelector('ul.series.work.index.group') || doc.querySelector('ul.work.index.group') || doc;
+  const out = [];
+  const seen = new Set();
+  for (const a of ul.querySelectorAll('li h4.heading a[href^="/works/"], li .heading a[href^="/works/"]')) {
+    const id = (a.getAttribute('href').match(/\/works\/(\d+)/) || [])[1];
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, title: clean(a.textContent) });
+  }
+  return out;
+}
+
+// All work ids in a series, in order (paginated, polite). On-device.
+export async function seriesWorks(seriesId, maxPages = 10) {
+  const sid = String(seriesId || '').match(/\d+/)?.[0];
+  if (!sid) return [];
+  const out = [];
+  const seen = new Set();
+  for (let page = 1; page <= maxPages; page += 1) {
+    let r;
+    try { r = await fetchHtml(`https://${AO3_HOST}/series/${sid}?page=${page}`); } catch (e) { break; }
+    if (!r || r.status >= 400 || !r.html) break;
+    const rows = parseSeriesWorkIds(r.html);
+    if (!rows.length) break;
+    let added = 0;
+    for (const w of rows) { if (!seen.has(w.id)) { seen.add(w.id); out.push(w); added += 1; } }
+    if (added === 0 || rows.length < 20) break; // same page again / short last page
+    await _sleep(1500);
+  }
+  return out;
+}
+
 // ---- tag search (Discover / tag tracking) ----------------------------------
 // AO3's works search ANDs the tags in `other_tag_names` and subtracts
 // `excluded_tag_names`, newest-first. We read the public results page and parse
