@@ -1,5 +1,6 @@
-import { getAllWorks, appendChapters, recordChapterUpdate, updateWork } from './db.js';
-import { fetchWork } from './sources/ao3.js';
+import { getAllWorks, appendChapters, recordChapterUpdate, updateWork, getGroups, patchGroup, upsertMatches } from './db.js';
+import { fetchWork, searchTags } from './sources/ao3.js';
+import { discoverBooks } from './goodreads.js';
 
 // On-device sync engine. This is the job FicStash's server worker does, run on
 // the phone instead: re-check every followed (ongoing) work for new chapters and
@@ -46,7 +47,40 @@ export async function triggerSync({ onProgress } = {}) {
       failed += 1;
     }
   }
-  return { ok: true, newChapters, checked, failed };
+
+  // ---- tracked-tag discovery: search each AO3 group, store new matches ------
+  let newMatches = 0;
+  let groups = [];
+  try { groups = await getGroups(); } catch (e) { groups = []; }
+  for (const g of groups) {
+    const source = g.source || 'ao3';
+    if (source !== 'ao3' && source !== 'books') continue; // RR/SH discovery needs their parsers (later)
+    const include = (g.tags || []).filter((t) => t.kind !== 'language').map((t) => t.name).filter(Boolean);
+    if (!include.length) continue; // language-browse groups need a different search
+    const exclude = (g.excludedTags || []).map((t) => t.name).filter(Boolean);
+    await sleep(SPACE_MS);
+    let metas = [];
+    try {
+      if (source === 'books') {
+        // Goodreads book discovery (notify-only): id/title/author/link.
+        const books = await discoverBooks(include, exclude);
+        metas = books.map((b) => ({
+          source: 'books', sourceId: b.id, title: b.title, author: b.author,
+          summary: '', fandom: '', tags: [], status: 'complete', words: 0, url: b.url,
+        }));
+      } else if (g.matchMode === 'any' && include.length > 1) {
+        for (const t of include) { metas.push(...await searchTags([t], exclude)); await sleep(800); }
+      } else {
+        metas = await searchTags(include, exclude);
+      }
+    } catch (e) { /* skip this group */ }
+    try {
+      newMatches += await upsertMatches(g.id, metas.map((m) => ({ ...m, tag: g.label || include[0] })));
+      await patchGroup(g.id, { lastChecked: new Date().toISOString() });
+    } catch (e) { /* non-fatal */ }
+  }
+
+  return { ok: true, newChapters, newMatches, checked, failed };
 }
 
 // Fire-and-forget sync kick (used after queueing a download/follow).

@@ -119,3 +119,43 @@ test('parseWork flags a members-only (restricted) page', () => {
   const html = '<div id="main"><form action="/users/login?restricted=true"></form></div>';
   assert.deepEqual(parseWork(html, '7'), { restricted: true });
 });
+
+// --- tag search parsing ----------------------------------------------------
+const { parseSearchResults, searchUrl } = await import('./ao3.js');
+
+const SEARCH = `
+<ol class="work index group">
+  <li id="work_555" class="work blurb group" role="article">
+    <div class="header module">
+      <h4 class="heading"><a href="/works/555">Padawan Days</a> by <a rel="author" href="/users/x">starwriter</a></h4>
+      <h5 class="fandoms heading"><a class="tag" href="/tags/SW">Star Wars</a></h5>
+    </div>
+    <ul class="tags commas">
+      <li class="relationships"><a class="tag">Ahsoka &amp; Obi-Wan</a></li>
+      <li class="characters"><a class="tag">Ahsoka Tano</a></li>
+      <li class="freeforms"><a class="tag">Mentor</a></li>
+    </ul>
+    <blockquote class="userstuff summary">A training fic.</blockquote>
+    <dl class="stats"><dd class="language">English</dd><dd class="words">3,400</dd><dd class="chapters">5/?</dd></dl>
+  </li>
+</ol>`;
+
+test('searchUrl ANDs tags + sets sort', () => {
+  const u = searchUrl(['ahsoka is obi-wan\'s padawan', 'fluff'], ['vampires']);
+  assert.match(u, /other_tag_names/);
+  assert.match(u, /excluded_tag_names/);
+  assert.match(u, /sort_column.*created_at/);
+});
+
+test('parseSearchResults parses a work blurb', () => {
+  const r = parseSearchResults(SEARCH);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].sourceId, '555');
+  assert.equal(r[0].title, 'Padawan Days');
+  assert.equal(r[0].author, 'starwriter');
+  assert.equal(r[0].fandom, 'Star Wars');
+  assert.equal(r[0].summary, 'A training fic.');
+  assert.equal(r[0].words, 3400);
+  assert.equal(r[0].status, 'ongoing');
+  assert.deepEqual(r[0].tags.filter((t) => t.k === 'relationship').map((t) => t.t), ['Ahsoka & Obi-Wan']);
+});

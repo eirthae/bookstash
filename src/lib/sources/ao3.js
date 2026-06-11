@@ -144,6 +144,81 @@ export async function fetchWork(id) {
   return parseWork(r.html, wid);
 }
 
+// ---- tag search (Discover / tag tracking) ----------------------------------
+// AO3's works search ANDs the tags in `other_tag_names` and subtracts
+// `excluded_tag_names`, newest-first. We read the public results page and parse
+// each work blurb — the on-device version of FicStash's worker search_group.
+export function searchUrl(include, exclude = [], page = 1) {
+  const p = new URLSearchParams();
+  p.set('work_search[other_tag_names]', (include || []).join(','));
+  if ((exclude || []).length) p.set('work_search[excluded_tag_names]', exclude.join(','));
+  p.set('work_search[sort_column]', 'created_at');
+  if (page > 1) p.set('page', String(page));
+  return `https://${AO3_HOST}/works/search?${p.toString()}`;
+}
+
+// Pure parser: an AO3 works-search/listing page → [{ sourceId, title, author,
+// fandom, summary, tags[], status, words, chaptersTotal, url }]. DOM-based.
+export function parseSearchResults(html) {
+  const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+  const out = [];
+  for (const li of doc.querySelectorAll('li.work.blurb, li.blurb.work, li[id^="work_"]')) {
+    const titleA = li.querySelector('.heading a[href^="/works/"]');
+    if (!titleA) continue;
+    const id = (titleA.getAttribute('href').match(/\/works\/(\d+)/) || [])[1];
+    if (!id) continue;
+    const author = clean(text(li, '.heading a[rel="author"]')) || 'Anonymous';
+    const fandoms = tagTexts(li, '.fandoms a.tag');
+    const tags = [
+      ...tagTexts(li, 'ul.tags li.relationships a.tag').map((t) => ({ t, k: 'relationship' })),
+      ...tagTexts(li, 'ul.tags li.characters a.tag').map((t) => ({ t, k: 'character' })),
+      ...tagTexts(li, 'ul.tags li.freeforms a.tag').map((t) => ({ t, k: 'freeform' })),
+    ];
+    const chStat = parseChapterStat(text(li, 'dd.chapters'));
+    out.push({
+      source: 'ao3', sourceId: id,
+      title: clean(titleA.textContent) || 'Untitled',
+      author,
+      fandom: fandoms.join(', '),
+      summary: clean(text(li, 'blockquote.summary, blockquote.userstuff.summary')),
+      tags,
+      language: clean(text(li, 'dd.language')) || 'English',
+      words: parseInt((text(li, 'dd.words') || '').replace(/[^\d]/g, ''), 10) || 0,
+      status: chStat.status,
+      chaptersTotal: chStat.total,
+      url: workUrl(id),
+    });
+  }
+  return out;
+}
+
+// Search AO3 by tags on-device (one page). Empty/parse-fail → [].
+export async function searchTags(include, exclude = [], page = 1) {
+  const inc = (include || []).map((t) => String(t).trim()).filter(Boolean);
+  if (!inc.length) return [];
+  try {
+    const r = await fetchHtml(searchUrl(inc, exclude, page));
+    if (!r || r.status !== 200) return [];
+    return parseSearchResults(r.html);
+  } catch (e) {
+    return [];
+  }
+}
+
+// AO3 tag autocomplete (the JSON endpoint), for the tracker's tag picker.
+export async function autocompleteTag(term) {
+  const q = String(term || '').trim();
+  if (q.length < 2) return [];
+  try {
+    const r = await fetchHtml(`https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`);
+    if (!r || r.status !== 200) return [];
+    const data = JSON.parse(r.html);
+    return (Array.isArray(data) ? data : []).map((d) => (typeof d === 'string' ? d : (d.name || d.value || d.id))).filter(Boolean);
+  } catch (e) {
+    return [];
+  }
+}
+
 // ---- small DOM helpers -----------------------------------------------------
 function text(root, sel) {
   const el = root.querySelector(sel);

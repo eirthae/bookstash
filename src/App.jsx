@@ -4,7 +4,7 @@ import { BottomNav } from './components/chrome.jsx';
 import { AddMenu } from './components/AddMenu.jsx';
 import { LibraryScreen } from './screens/Library.jsx';
 import { WhatsNewScreen } from './screens/WhatsNew.jsx';
-import { DiscoverScreen } from './screens/Discover.jsx';
+import { DiscoverScreen, TagResultsScreen, LaterScreen } from './screens/Discover.jsx';
 import { StoryDetailScreen } from './screens/Detail.jsx';
 import { ReaderScreen } from './screens/Reader.jsx';
 import { SettingsScreen, ConnectScreen } from './screens/Settings.jsx';
@@ -69,7 +69,7 @@ export default function App() {
     const n = nav.current;
     if (tab === 'library') return <LibraryScreen works={works} onRemove={removeFromLibrary} onReload={reload} refreshKey={refreshKey} nav={n} />;
     if (tab === 'whatsnew') return <WhatsNewScreen chapters={[]} matches={[]} nav={n} />;
-    if (tab === 'discover') return <DiscoverScreen />;
+    if (tab === 'discover') return <DiscoverScreen nav={n} />;
     return <SettingsScreen appMode={appMode} setAppMode={changeMode} nav={n} />;
   };
   const renderTop = () => {
@@ -82,6 +82,8 @@ export default function App() {
     if (top.screen === 'reader') return <ReaderScreen work={p.work} workId={p.workId} chapterN={p.chapterN} chapterTitle={p.chapterTitle} settings={reader} setSettings={updateReader} nav={n} />;
     if (top.screen === 'about') return <AboutScreen onBack={n.pop} />;
     if (top.screen === 'connect') return <ConnectScreen nav={n} />;
+    if (top.screen === 'tagresults') return <TagResultsScreen tag={p.tag} onLeave={p.onLeave} nav={n} />;
+    if (top.screen === 'later') return <LaterScreen onLeave={p.onLeave} nav={n} />;
     return null;
   };
 

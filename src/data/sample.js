@@ -27,3 +27,6 @@ export function paletteFor(seed) {
 export const WORKS = [];
 export const CHAPTERS = [];
 export const READER_PARAS = [];
+
+export const TRACKED_TAGS = [];
+export const SUGGESTIONS = [];

@@ -19,3 +19,9 @@ export function workUrl(sourceId, sourceWorkId, fallbackUrl = '') {
   if (src && src.workUrl && sourceWorkId) return src.workUrl(sourceWorkId);
   return fallbackUrl || '';
 }
+
+// RR/SH genre & tag taxonomies (re-exported so the Discover pickers can import
+// everything from one place, matching FicStash).
+export {
+  ROYALROAD_GENRES, ROYALROAD_TAGS, SCRIBBLEHUB_GENRES, SCRIBBLEHUB_TAGS,
+} from './taxonomies.js';

@@ -228,3 +228,71 @@ export async function markChapterUpdateSeen(id) {
   if (cur) store.put({ ...cur, seen: true });
   await txDone(t);
 }
+
+// ---- sync engine: tracked groups + matches --------------------------------
+export async function putGroup(group) {
+  const db = await openDB();
+  const t = tx(db, ['groups'], 'readwrite');
+  t.objectStore('groups').put(group);
+  await txDone(t);
+  return group;
+}
+export async function getGroups() {
+  const db = await openDB();
+  const rows = await reqToPromise(tx(db, ['groups'], 'readonly').objectStore('groups').getAll());
+  return (rows || []).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+}
+export async function patchGroup(id, patch) {
+  const db = await openDB();
+  const t = tx(db, ['groups'], 'readwrite');
+  const store = t.objectStore('groups');
+  const cur = await reqToPromise(store.get(id));
+  if (cur) store.put({ ...cur, ...patch });
+  await txDone(t);
+}
+export async function removeGroup(id) {
+  const db = await openDB();
+  const t = tx(db, ['groups', 'matches'], 'readwrite');
+  t.objectStore('groups').delete(id);
+  const idx = t.objectStore('matches').index('byGroup');
+  const keysReq = idx.getAllKeys(IDBKeyRange.only(id));
+  keysReq.onsuccess = () => { (keysReq.result || []).forEach((k) => t.objectStore('matches').delete(k)); };
+  await txDone(t);
+}
+
+// Insert matches for a group, skipping ones already seen (dedup on id). Returns
+// how many were newly added.
+export async function upsertMatches(groupId, metas) {
+  const db = await openDB();
+  const t = tx(db, ['matches'], 'readwrite');
+  const store = t.objectStore('matches');
+  const now = new Date().toISOString();
+  let added = 0;
+  for (const m of metas || []) {
+    const id = `${groupId}:${m.source}:${m.sourceId}`;
+    const existing = await reqToPromise(store.get(id)); // eslint-disable-line no-await-in-loop
+    if (existing) continue;
+    store.put({
+      id, groupId, source: m.source, sourceId: m.sourceId, matchId: id,
+      title: m.title, author: m.author, summary: m.summary || '', fandom: m.fandom || '',
+      tags: Array.isArray(m.tags) ? m.tags : [], status: m.status || 'ongoing',
+      words: m.words || 0, tag: m.tag || '', url: m.url || '',
+      at: now, seen: false, dismissed: false, saved: false, later: false,
+    });
+    added += 1;
+  }
+  await txDone(t);
+  return added;
+}
+export async function getMatches() {
+  const db = await openDB();
+  return reqToPromise(tx(db, ['matches'], 'readonly').objectStore('matches').getAll());
+}
+export async function patchMatch(id, patch) {
+  const db = await openDB();
+  const t = tx(db, ['matches'], 'readwrite');
+  const store = t.objectStore('matches');
+  const cur = await reqToPromise(store.get(id));
+  if (cur) store.put({ ...cur, ...patch });
+  await txDone(t);
+}
