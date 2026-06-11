@@ -160,12 +160,13 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
   // uploads that share a series or author cluster without any manual work.
   const bookGroups = isBooks ? groupBooks(shown, sort, lastRead) : [];
   const useSeries = isBooks && bookGroups.some(g => !g.standalone);
-  // Fandom sections only for Fics in Default sort; otherwise a flat sorted list.
-  // In that grouped view, AO3 series are pulled out first (auto-grouped like
-  // Books); the rest ("loose") group by fandom as before.
-  const useFandom = shelf === 'fics' && sort === 'default';
+  // Fics ALWAYS group (by AO3 series first, then fandom) — every sort reorders
+  // the sections instead of flattening, so the collapse toggle never vanishes
+  // and the row never jumps when you change sort. AO3 series are pulled out
+  // first (auto-grouped like Books); the rest ("loose") group by fandom.
+  const useFandom = shelf === 'fics';
   const { seriesGroups: ficsSeries, loose: ficsLoose } = useFandom
-    ? groupFicsSeries(shown)
+    ? groupFicsSeries(shown, sort, lastRead)
     : { seriesGroups: [], loose: shown };
   const fandomNames = useFandom ? [...new Set(ficsLoose.map(fandomName))] : [];
   const sectionNames = useFandom
@@ -265,7 +266,7 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
             {ficsSeries.length > 0 && (
               <SeriesSections groups={ficsSeries} open={open} onDelete={setPendingDelete} collapsed={collapsed} toggle={toggleSection} />
             )}
-            <FandomSections works={ficsLoose} open={open} onDelete={setPendingDelete} collapsed={collapsed} toggle={toggleSection} />
+            <FandomSections works={ficsLoose} open={open} onDelete={setPendingDelete} collapsed={collapsed} toggle={toggleSection} sort={sort} lastRead={lastRead} />
           </>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 13, padding: '0 20px 24px' }}>
@@ -370,7 +371,7 @@ function groupBooks(works, sort = 'added', lastRead = {}) {
 // the series name, ordered by part; everything else is "loose" and falls through
 // to the existing fandom grouping. Like Books, a series keeps its section even
 // with one downloaded work. Series sections sort alphabetically by series name.
-function groupFicsSeries(works) {
+function groupFicsSeries(works, sort = 'default', lastRead = {}) {
   const byKey = new Map();
   const loose = [];
   for (const w of works) {
@@ -385,8 +386,26 @@ function groupFicsSeries(works) {
   for (const g of seriesGroups) {
     g.items.sort((a, b) => (a.ao3SeriesIndex ?? 1e9) - (b.ao3SeriesIndex ?? 1e9) || (a.title || '').localeCompare(b.title || ''));
   }
-  seriesGroups.sort((a, b) => a.name.localeCompare(b.name));
+  orderGroups(seriesGroups, sort, lastRead);
   return { seriesGroups, loose };
+}
+
+// Order section groups by the active sort (shared by fandom + fics-series
+// sections): A–Z by name, Default by size, otherwise by the group's most-recent
+// item (added / updated / read).
+function orderGroups(groups, sort, lastRead = {}) {
+  if (sort === 'title') {
+    groups.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sort === 'default') {
+    groups.sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));
+  } else {
+    const recency = (g) => g.items.reduce((m, x) => {
+      const v = sort === 'read' ? (lastRead[x.id] || '') : sort === 'updated' ? (x.sourceUpdated || '') : (x.createdAt || '');
+      return v > m ? v : m;
+    }, '');
+    groups.sort((a, b) => recency(b).localeCompare(recency(a)));
+  }
+  return groups;
 }
 
 // Books grouped into their series/author sections (see groupBooks).
@@ -415,7 +434,7 @@ function SeriesSections({ groups, open, onDelete, collapsed, toggle }) {
   );
 }
 
-function FandomSections({ works, open, onDelete, collapsed, toggle }) {
+function FandomSections({ works, open, onDelete, collapsed, toggle, sort = 'default', lastRead = {} }) {
   const groups = [];
   const byName = new Map();
   for (const w of works) {
@@ -424,7 +443,7 @@ function FandomSections({ works, open, onDelete, collapsed, toggle }) {
     if (!g) { g = { name, items: [] }; byName.set(name, g); groups.push(g); }
     g.items.push(w);
   }
-  groups.sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));
+  orderGroups(groups, sort, lastRead);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '0 20px 24px' }}>
