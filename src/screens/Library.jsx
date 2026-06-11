@@ -101,13 +101,17 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
     else { showToast(res.error || 'Could not remove.', 'solar:danger-triangle-bold'); reloadLinks(); }
   };
 
+  // On-device sync runs (and finishes) right here, then we refresh the library.
   const doSync = async () => {
     if (syncing) return;
     setSyncing(true);
-    showToast('Starting sync…');
+    showToast('Syncing…', 'solar:refresh-circle-linear');
     const res = await triggerSync();
     setSyncing(false);
-    showToast(res.ok ? 'Sync started — new works arrive shortly.' : (res.error || 'Sync failed.'));
+    onReload?.();
+    showToast(res.ok
+      ? (res.newChapters ? `Synced · ${res.newChapters} new chapter${res.newChapters === 1 ? '' : 's'}` : 'Synced — up to date')
+      : (res.error || 'Sync failed.'));
   };
   const syncAction = { icon: syncing ? 'solar:refresh-circle-bold' : 'solar:refresh-circle-linear', onClick: doSync };
 

@@ -9,7 +9,7 @@
 // (sortWorks, newId) are unit-tested.
 
 const DB_NAME = 'bookstash';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let _dbPromise = null;
 
@@ -26,6 +26,21 @@ function openDB() {
       if (!db.objectStoreNames.contains('chapters')) {
         const ch = db.createObjectStore('chapters', { keyPath: ['workId', 'n'] });
         ch.createIndex('byWork', 'workId', { unique: false });
+      }
+      // v2 — the on-device sync engine:
+      //  chapter_updates: new chapters found on followed works (What's New feed)
+      //  groups:          tracked tag groups (Discover)
+      //  matches:         works matching a tracked tag (What's New "New matches")
+      if (!db.objectStoreNames.contains('chapter_updates')) {
+        const cu = db.createObjectStore('chapter_updates', { keyPath: 'id' });
+        cu.createIndex('byWork', 'workId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('groups')) {
+        db.createObjectStore('groups', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('matches')) {
+        const m = db.createObjectStore('matches', { keyPath: 'id' });
+        m.createIndex('byGroup', 'groupId', { unique: false });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -169,4 +184,47 @@ export async function deleteWork(id) {
 export async function stats() {
   const works = await getAllWorks();
   return { count: works.length, words: works.reduce((s, w) => s + (w.words || 0), 0) };
+}
+
+// ---- sync engine: chapter updates -----------------------------------------
+// Append newly-fetched chapters to a work (absolute chapter numbers).
+export async function appendChapters(workId, chapters) {
+  const db = await openDB();
+  const t = tx(db, ['chapters'], 'readwrite');
+  const store = t.objectStore('chapters');
+  for (const c of chapters || []) {
+    store.put({ workId, n: c.n, title: c.title || `Chapter ${c.n}`, words: c.words || 0, content: c.content || '' });
+  }
+  await txDone(t);
+}
+
+// Record new chapters in the What's New "New chapters" feed (idempotent on id).
+export async function recordChapterUpdate(work, chapters) {
+  const db = await openDB();
+  const t = tx(db, ['chapter_updates'], 'readwrite');
+  const store = t.objectStore('chapter_updates');
+  const now = new Date().toISOString();
+  for (const c of chapters || []) {
+    store.put({
+      id: `${work.id}:${c.n}`, workId: work.id, n: c.n,
+      chapter: c.title || `Chapter ${c.n}`, title: work.title || 'Untitled', author: work.author || '',
+      fandom: work.fandom || '', words: c.words || 0, at: now, seen: false,
+    });
+  }
+  await txDone(t);
+}
+
+export async function getChapterUpdates() {
+  const db = await openDB();
+  const rows = await reqToPromise(tx(db, ['chapter_updates'], 'readonly').objectStore('chapter_updates').getAll());
+  return (rows || []).sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+}
+
+export async function markChapterUpdateSeen(id) {
+  const db = await openDB();
+  const t = tx(db, ['chapter_updates'], 'readwrite');
+  const store = t.objectStore('chapter_updates');
+  const cur = await reqToPromise(store.get(id));
+  if (cur) store.put({ ...cur, seen: true });
+  await txDone(t);
 }
