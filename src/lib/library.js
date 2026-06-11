@@ -1,4 +1,4 @@
-import { getAllWorks, deleteWork } from './db.js';
+import { getAllWorks, deleteWork, getChapters, updateWork } from './db.js';
 import { getReadingPos } from './reading.js';
 
 // Map an on-device work record (db.js shape) to the exact shape FicStash's UI
@@ -40,16 +40,43 @@ export function mapWork(row) {
     status: row.status || 'complete',
     follow: !!row.follow,
     sourceId: row.sourceId || '',
+    sourceWorkId: row.sourceId || '',   // FicStash field name (for workUrl)
+    sourceUrl: row.url || '',           // canonical link (open at source)
+    externalUrl: row.externalUrl || '', // user-set link (Books)
     url: row.url || '',
     progress,
     lastChapter: pos ? pos.chapter : 1,
     offline: true,                 // on-device works are always fully downloaded
+    restricted: false,             // restricted AO3 works are never stored
+    frozen: false,
+    frozenDate: null,
     bookmarked: false,             // no AO3-bookmark concept on-device
     subscribed: !!row.follow,      // "Following" badge for ongoing works
     unread: !pos,
     palette: row.palette ?? null,
     updated: row.updated || '',
   };
+}
+
+// Chapters for a work, in the shape the reader/Detail expect (all on-device →
+// state 'done').
+export async function fetchChapters(workId) {
+  const rows = await getChapters(workId);
+  return (rows || []).map((c) => ({ n: c.n, title: c.title || `Chapter ${c.n}`, words: c.words || 0, content: c.content || '', state: 'done' }));
+}
+
+// Edit-sheet save: snake_case fields (matching FicStash) → on-device record.
+export async function updateWorkFields(workId, fields) {
+  const map = { custom_title: 'customTitle', series_name: 'series', series_index: 'seriesIndex', external_url: 'externalUrl' };
+  const patch = {};
+  for (const [k, v] of Object.entries(fields || {})) if (k in map) patch[map[k]] = v;
+  if (Object.keys(patch).length) await updateWork(workId, patch);
+}
+
+// Existing series names (for the edit-sheet autocomplete).
+export async function fetchSeriesNames() {
+  const rows = await getAllWorks();
+  return [...new Set((rows || []).map((r) => (r.series || '').trim()).filter(Boolean))].sort();
 }
 
 export async function fetchWorks() {

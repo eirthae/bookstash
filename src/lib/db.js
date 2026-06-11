@@ -146,6 +146,16 @@ export async function getChapters(workId) {
   return (rows || []).sort((a, b) => a.n - b.n);
 }
 
+// Merge `patch` into a work record (used by the Detail edit sheet).
+export async function updateWork(id, patch) {
+  const db = await openDB();
+  const t = tx(db, ['works'], 'readwrite');
+  const store = t.objectStore('works');
+  const cur = await reqToPromise(store.get(id));
+  if (cur) store.put({ ...cur, ...patch });
+  await txDone(t);
+}
+
 export async function deleteWork(id) {
   const db = await openDB();
   const t = tx(db, ['works', 'chapters'], 'readwrite');

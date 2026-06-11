@@ -4,7 +4,7 @@ import { BottomNav } from './components/chrome.jsx';
 import { AddMenu } from './components/AddMenu.jsx';
 import { LibraryScreen } from './screens/Library.jsx';
 import { DiscoverScreen } from './screens/Discover.jsx';
-import { BookDetailScreen } from './screens/BookDetail.jsx';
+import { StoryDetailScreen } from './screens/Detail.jsx';
 import { ReaderScreen } from './screens/Reader.jsx';
 import { SettingsScreen } from './screens/Settings.jsx';
 import { AboutScreen } from './screens/About.jsx';
@@ -63,9 +63,9 @@ export default function App() {
   const renderTop = () => {
     const n = nav.current, p = top.props || {};
     if (top.screen === 'detail') {
-      return <BookDetailScreen work={p.work} onBack={n.pop}
-        onRead={(w) => n.push('reader', { work: w })}
-        onRemoved={(id) => { (p.onRemoved || removeFromLibrary)(id); n.pop(); }} />;
+      return <StoryDetailScreen work={p.work} nav={n}
+        onRemoved={(id) => (p.onRemoved || removeFromLibrary)(id)}
+        onReload={reload} />;
     }
     if (top.screen === 'reader') return <ReaderScreen work={p.work} settings={reader} setSettings={updateReader} onBack={n.pop} />;
     if (top.screen === 'about') return <AboutScreen onBack={n.pop} />;

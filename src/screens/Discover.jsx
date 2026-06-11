@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Sheet } from '../components/ui.jsx';
 import Icon from '../components/Icon.jsx';
 import { Appbar } from '../components/chrome.jsx';
 import { GOODREADS_TAGS } from '../data/goodreadsTags.js';
@@ -142,5 +143,19 @@ function ResultCard({ b, onOpen }) {
       </div>
       <Icon icon="solar:square-top-down-linear" size={17} color="var(--text-tertiary)" />
     </button>
+  );
+}
+
+// Tag tracking (follow an AO3/RR/SH tag → new matching works each sync) lands
+// with the on-device sync engine. Stub so the Detail screen's "tap a tag to
+// follow" path resolves; opening it explains what's coming.
+export function TagGroupBuilder({ open, onClose }) {
+  if (!open) return null;
+  return (
+    <Sheet open={open} onClose={onClose} title="Track this tag">
+      <div style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--text-secondary)', padding: '4px 2px 12px' }}>
+        Following a tag — so BookStash surfaces new matching works on each sync — is coming with on-device Discover. Hang tight.
+      </div>
+    </Sheet>
   );
 }

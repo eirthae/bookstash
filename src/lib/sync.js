@@ -8,3 +8,7 @@ export async function triggerSync() {
   // tag-tracking discovery) and return a real result.
   return { ok: true, pending: true };
 }
+
+// Fire-and-forget sync kick (used after queueing a download/follow). Same engine
+// as triggerSync; failures are swallowed by callers.
+export function kickSync() { triggerSync().catch(() => {}); }
