@@ -10,6 +10,7 @@ import { ReaderScreen } from './screens/Reader.jsx';
 import { SettingsScreen, ConnectScreen } from './screens/Settings.jsx';
 import { AboutScreen } from './screens/About.jsx';
 import { fetchWorks } from './lib/library.js';
+import { triggerSync } from './lib/sync.js';
 
 const READER_DEFAULTS = { theme: 'dark', font: 'serif', size: 19, leading: 1.70, margin: 26, brightness: 1 };
 
@@ -56,6 +57,20 @@ export default function App() {
 
   const reload = useCallback(() => { fetchWorks().then((w) => setWorks(w || [])).catch(() => setWorks([])); }, []);
   useEffect(() => { reload(); }, [reload]);
+
+  // Auto-sync on app open (throttled to every 6h), so followed fics + tracked
+  // tags refresh on their own without tapping Sync. Reloads the library if the
+  // run pulled anything new. (True background sync — app closed — is a later
+  // native add; this covers "updates when you open the app".)
+  useEffect(() => {
+    const LAST = 'bs-last-sync', SIX_H = 6 * 3600 * 1000;
+    let last = 0; try { last = Number(localStorage.getItem(LAST) || 0); } catch (e) { /* ignore */ }
+    if (Date.now() - last < SIX_H) return;
+    triggerSync().then((r) => {
+      try { localStorage.setItem(LAST, String(Date.now())); } catch (e) { /* ignore */ }
+      if (r && r.ok && (r.newChapters || r.newMatches || r.seriesAdded)) reload();
+    }).catch(() => {});
+  }, [reload]);
 
   const removeFromLibrary = (id) => setWorks((ws) => (ws || []).filter((w) => w.id !== id));
   const onAdded = () => { reload(); setRefreshKey((k) => k + 1); setStack([]); setTab('library'); };
