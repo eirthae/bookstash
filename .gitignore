@@ -145,5 +145,9 @@ vite.config.ts.timestamp-*
 # Capacitor native platform (generated in CI by `cap add android`)
 android/
 
-# Generated app-icon/splash PNGs (built in CI from resources/icon-foreground.svg)
-resources/*.png
+# Generated app-icon/splash PNGs (built in CI from resources/icon-foreground.png).
+# The glyph source itself — FicStash's icon foreground — IS tracked.
+resources/icon-background.png
+resources/icon-only.png
+resources/splash.png
+resources/splash-dark.png

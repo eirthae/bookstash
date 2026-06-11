@@ -1,6 +1,7 @@
 import Icon from '../components/Icon.jsx';
+import { Appbar } from '../components/chrome.jsx';
 
-const APP_VERSION = '0.4.0';
+const APP_VERSION = '0.7.1';
 
 export function SettingsScreen({ works, mode, setMode, onAbout }) {
   const count = works ? works.length : 0;
@@ -8,7 +9,7 @@ export function SettingsScreen({ works, mode, setMode, onAbout }) {
 
   return (
     <div className="screen">
-      <div className="appbar"><div className="title">Settings</div></div>
+      <Appbar large title="Settings" />
       <div className="scroll" style={{ padding: '4px 20px 28px' }}>
         <Section label="Appearance">
           <div style={{ display: 'flex', gap: 8 }}>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import Icon from '../components/Icon.jsx';
+import { Appbar } from '../components/chrome.jsx';
 import { GOODREADS_TAGS } from '../data/goodreadsTags.js';
 import { discoverBooks } from '../lib/goodreads.js';
 
@@ -28,10 +29,7 @@ export function DiscoverScreen() {
 
   return (
     <div className="screen">
-      <div className="appbar">
-        <div className="title">Discover</div>
-        <div className="sub">Find new books by reader tags · opens on Goodreads</div>
-      </div>
+      <Appbar large title="Discover" sub="Find new books by reader tags · opens on Goodreads" />
 
       <div className="scroll" style={{ padding: '4px 16px 24px' }}>
         <TagField

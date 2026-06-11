@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Preferences } from '@capacitor/preferences';
-import Icon from './components/Icon.jsx';
+import { BottomNav } from './components/chrome.jsx';
+import { AddMenu } from './components/AddMenu.jsx';
 import { LibraryScreen } from './screens/Library.jsx';
 import { DiscoverScreen } from './screens/Discover.jsx';
 import { BookDetailScreen } from './screens/BookDetail.jsx';
@@ -21,6 +22,8 @@ export default function App() {
   const [about, setAbout] = useState(false);    // About & Support screen
   const [works, setWorks] = useState(null);      // null = still loading
   const [reader, setReader] = useState(READER_DEFAULTS); // reader theme/font/size
+  const [addOpen, setAddOpen] = useState(false); // the bottom-nav "+" Add menu
+  const [notice, setNotice] = useState('');      // transient Library result toast
 
   useEffect(() => {
     let alive = true;
@@ -36,6 +39,13 @@ export default function App() {
   const reload = useCallback(() => { getAllWorks().then((w) => setWorks(w || [])).catch(() => setWorks([])); }, []);
   useEffect(() => { reload(); }, [reload]);
 
+  // After an Add (upload/link): reload the library, jump to it, flash a notice.
+  const onAdded = (msg) => {
+    reload();
+    setTab('library');
+    if (msg) { setNotice(msg); setTimeout(() => setNotice(''), 4500); }
+  };
+
   const fullscreen = reading || viewing || about; // hide the bottom nav on these
 
   return (
@@ -50,7 +60,7 @@ export default function App() {
             onRead={(w) => setReading(w)}
             onRemoved={() => { setViewing(null); reload(); }} />
         ) : tab === 'library' ? (
-          <LibraryScreen works={works} onReload={reload} onOpen={setViewing} />
+          <LibraryScreen works={works} onOpen={setViewing} onAdd={() => setAddOpen(true)} notice={notice} />
         ) : tab === 'discover' ? (
           <DiscoverScreen />
         ) : (
@@ -58,18 +68,11 @@ export default function App() {
         )}
       </div>
       {!fullscreen && (
-        <nav className="bottomnav">
-          <button className={tab === 'library' ? 'on' : ''} onClick={() => setTab('library')}>
-            <Icon icon="solar:books-minimalistic-bold" size={22} /> Library
-          </button>
-          <button className={tab === 'discover' ? 'on' : ''} onClick={() => setTab('discover')}>
-            <Icon icon="solar:magnifer-bold" size={22} /> Discover
-          </button>
-          <button className={tab === 'settings' ? 'on' : ''} onClick={() => setTab('settings')}>
-            <Icon icon="solar:settings-bold" size={22} /> Settings
-          </button>
-        </nav>
+        <BottomNav active={tab}
+          onTab={(id) => { setAddOpen(false); setTab(id); }}
+          onAdd={() => setAddOpen((o) => !o)} addActive={addOpen} />
       )}
+      {!fullscreen && <AddMenu open={addOpen} onClose={() => setAddOpen(false)} onChanged={onAdded} />}
     </div>
   );
 }

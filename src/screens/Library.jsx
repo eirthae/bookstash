@@ -1,64 +1,26 @@
-import { Fragment, useRef, useState } from 'react';
+import { Fragment, useState } from 'react';
 import Icon from '../components/Icon.jsx';
+import { Appbar } from '../components/chrome.jsx';
 import { sortWorks, groupBySeries } from '../lib/db.js';
-import { importFiles, importLink, summarize } from '../lib/import.js';
 
-// The library: a list of on-device books + a multi-file (bulk) importer. Tapping
-// a book opens the reader. No network, no accounts.
+// The library: a list of on-device books, auto-grouped by series. Tapping a book
+// opens the reader. Adding happens through the bottom-nav "+" (AddMenu). No
+// network, no accounts.
 const SORTS = [
   { id: 'added', label: 'Last added' },
   { id: 'title', label: 'A–Z' },
   { id: 'author', label: 'Author' },
 ];
 
-export function LibraryScreen({ works, onReload, onOpen }) {
-  const fileInput = useRef(null);
-  const [busy, setBusy] = useState(null);   // { done, total, current } while importing
-  const [notice, setNotice] = useState(''); // result summary
+export function LibraryScreen({ works, onOpen, onAdd, notice }) {
   const [sort, setSort] = useState('added');
-  const [addOpen, setAddOpen] = useState(false); // the Add sheet (upload / link)
-
-  const pick = () => { if (!busy && fileInput.current) fileInput.current.click(); };
-  // Add by link: fetch + extract on-device, store as a 1-chapter work. Returns
-  // the per-attempt result so the sheet can show inline error / restricted notes.
-  const addLink = async (url) => {
-    const res = await importLink(url);
-    if (res.ok) {
-      onReload();
-      setNotice('Added — saved offline.');
-      setTimeout(() => setNotice(''), 4500);
-    }
-    return res;
-  };
-  const onFiles = async (e) => {
-    const files = e.target.files; e.target.value = '';
-    if (!files || !files.length) return;
-    setNotice('');
-    setBusy({ done: 0, total: files.length });
-    const results = await importFiles(files, setBusy);
-    setBusy(null);
-    const s = summarize(results);
-    setNotice(`${s.added} added${s.failed ? ` · ${s.failed} skipped` : ''}`);
-    onReload();
-    setTimeout(() => setNotice(''), 4500);
-  };
-
   const sorted = works ? sortWorks(works, sort) : null;
 
   return (
     <div className="screen">
-      <input ref={fileInput} type="file" accept=".epub,.html,.htm,.txt" multiple style={{ display: 'none' }} onChange={onFiles} />
-      <div className="appbar" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div>
-          <div className="title">Library</div>
-          <div className="sub">{works ? `${works.length} book${works.length === 1 ? '' : 's'} · on this device` : '…'}</div>
-        </div>
-        <button className="iconbtn-lg" onClick={() => setAddOpen(true)} disabled={!!busy} aria-label="Add to library">
-          <Icon icon="solar:add-circle-bold" size={32} color="var(--accent)" />
-        </button>
-      </div>
+      <Appbar large title="Library"
+        sub={works ? `${works.length} book${works.length === 1 ? '' : 's'} · on this device` : '…'} />
 
-      {busy && <div className="importbar"><span className="spin" /> Importing {busy.done}/{busy.total}{busy.current ? ` — ${busy.current}` : ''}…</div>}
       {notice && <div className="notice">{notice}</div>}
 
       {sorted && sorted.length > 0 && (
@@ -73,70 +35,12 @@ export function LibraryScreen({ works, onReload, onOpen }) {
         {sorted === null ? (
           <div style={{ color: 'var(--text-tertiary)', fontSize: 13, padding: '10px 4px' }}>Loading…</div>
         ) : sorted.length === 0 ? (
-          <EmptyLibrary onPick={pick} />
+          <EmptyLibrary onPick={onAdd} />
         ) : (
           <BookList works={sorted} onOpen={onOpen} />
         )}
       </div>
-
-      {addOpen && <AddSheet onClose={() => setAddOpen(false)} onUpload={() => { setAddOpen(false); pick(); }} onAddLink={addLink} />}
     </div>
-  );
-}
-
-// Add to library: upload files, or add by link (fetched + extracted on-device).
-function AddSheet({ onClose, onUpload, onAddLink }) {
-  const [url, setUrl] = useState('');
-  const [state, setState] = useState({ kind: 'idle' }); // idle | busy | error | restricted | ok
-
-  const submit = async () => {
-    const u = url.trim();
-    if (!u || state.kind === 'busy') return;
-    setState({ kind: 'busy' });
-    const res = await onAddLink(u);
-    if (res.ok) { setUrl(''); setState({ kind: 'ok' }); setTimeout(onClose, 700); }
-    else if (res.restricted) setState({ kind: 'restricted', url: res.url, msg: res.error });
-    else setState({ kind: 'error', msg: res.error });
-  };
-
-  return (
-    <>
-      <div className="bs-sheet-backdrop" onClick={onClose} />
-      <div className="bs-sheet">
-        <div className="bs-sheet-title">Add to library</div>
-
-        <button className="add-row pressable" onClick={onUpload}>
-          <Icon icon="solar:upload-minimalistic-bold" size={20} color="var(--accent)" />
-          <div><b>Upload files</b><span>EPUB, HTML or TXT — pick many at once</span></div>
-        </button>
-
-        <div className="add-or"><span>or add by link</span></div>
-
-        <div className="searchfield" style={{ marginBottom: 10 }}>
-          <Icon icon="solar:link-linear" size={18} color="var(--text-tertiary)" />
-          <input placeholder="Paste a fic or article URL" value={url}
-            onChange={(e) => { setUrl(e.target.value); if (state.kind !== 'busy') setState({ kind: 'idle' }); }}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
-            autoCapitalize="off" autoCorrect="off" spellCheck={false} inputMode="url" />
-        </div>
-
-        {state.kind === 'error' && <div className="add-note err">{state.msg}</div>}
-        {state.kind === 'restricted' && (
-          <div className="add-note warn">
-            🔒 {state.msg}
-            <button className="linklike" onClick={() => { try { window.open(state.url, '_blank', 'noopener'); } catch (e) {} }}>Open on AO3</button>
-          </div>
-        )}
-        {state.kind === 'ok' && <div className="add-note ok">Added — saved offline.</div>}
-
-        <button className="btn btn-primary" style={{ width: '100%' }} disabled={state.kind === 'busy' || !url.trim()} onClick={submit}>
-          {state.kind === 'busy' ? <><span className="spin" /> Fetching…</> : <><Icon icon="solar:download-minimalistic-bold" size={18} /> Add link</>}
-        </button>
-        <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 10, lineHeight: 1.5 }}>
-          Fetched on this device and saved offline. Articles &amp; single-page works read best for now.
-        </div>
-      </div>
-    </>
   );
 }
 
