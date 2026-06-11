@@ -213,9 +213,6 @@ export function StoryDetailScreen({ work, suggestion, onSaved, onRemoved, onRelo
                     title={saveState === 'saved' ? 'In your library' : saveState === 'queued' ? 'Downloading — sync started' : 'Save to library'}
                   >
                     <Icon icon={saveState === 'saved' ? 'solar:check-read-linear' : saveState === 'queued' ? 'solar:clock-circle-linear' : 'solar:download-minimalistic-bold'} size={22} /></button>
-                ) : canOpenAtSource ? (
-                  <button className="btn btn-lg btn-surface" onClick={openAtSource} style={{ flex: 'none', width: 56, padding: 0 }} title={openLabel}>
-                    <Icon icon="solar:square-top-down-linear" size={22} /></button>
                 ) : null}
               </>
             )}
@@ -225,7 +222,7 @@ export function StoryDetailScreen({ work, suggestion, onSaved, onRemoved, onRelo
             <div style={{ display: 'flex', gap: 10, padding: 13, borderRadius: 'var(--radius-md)', background: 'var(--info-soft)', marginBottom: 18 }}>
               <Icon icon="solar:book-bookmark-bold" size={20} color="var(--info)" style={{ flexShrink: 0, marginTop: 1 }} />
               <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                <b style={{ color: 'var(--text-primary)' }}>FicStash can’t download published books.</b> If you’d like to read this, get it in <b>EPUB</b> format (buy it, or your library), then add it from <b>Library → Add files</b> to read it offline here.
+                <b style={{ color: 'var(--text-primary)' }}>BookStash can’t download published books.</b> If you’d like to read this, get it in <b>EPUB</b> format (buy it, or your library), then add it from <b>Library → Add files</b> to read it offline here.
               </div>
             </div>
           )}
@@ -235,7 +232,7 @@ export function StoryDetailScreen({ work, suggestion, onSaved, onRemoved, onRelo
               style={{ display: 'flex', gap: 10, padding: 13, borderRadius: 'var(--radius-md)', background: 'var(--info-soft)', marginBottom: 18, width: '100%', textAlign: 'left', border: 'none' }}>
               <Icon icon="solar:bell-bold" size={20} color="var(--info)" style={{ flexShrink: 0, marginTop: 1 }} />
               <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                <b style={{ color: 'var(--text-primary)' }}>This work is still updating.</b> Saving downloads everything posted so far, and FicStash re-checks it on every sync — new chapters download automatically as they go up.
+                <b style={{ color: 'var(--text-primary)' }}>This work is still updating.</b> Saving downloads everything posted so far, and BookStash re-checks it on every sync — new chapters download automatically as they go up.
               </div>
               <Icon icon="solar:arrow-right-up-linear" size={18} color="var(--text-tertiary)" style={{ flexShrink: 0, alignSelf: 'center' }} />
             </button>
@@ -246,7 +243,7 @@ export function StoryDetailScreen({ work, suggestion, onSaved, onRemoved, onRelo
               style={{ display: 'flex', gap: 10, padding: 13, borderRadius: 'var(--radius-md)', background: 'var(--warning-soft)', marginBottom: 18, width: '100%', textAlign: 'left', border: 'none' }}>
               <Icon icon="solar:lock-keyhole-bold" size={20} color="var(--warning)" style={{ flexShrink: 0, marginTop: 1 }} />
               <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                <b style={{ color: 'var(--text-primary)' }}>Restricted to AO3 members.</b> The author limited this work to logged-in AO3 users, so FicStash can’t download it. Tap to read it on AO3 — or add it by link from your logged-in account.
+                <b style={{ color: 'var(--text-primary)' }}>Restricted to AO3 members.</b> The author limited this work to logged-in AO3 users, so BookStash can’t download it. Tap to read it on AO3 — or add it by link from your logged-in account.
               </div>
               <Icon icon="solar:arrow-right-up-linear" size={18} color="var(--text-tertiary)" style={{ flexShrink: 0, alignSelf: 'center' }} />
             </button>
@@ -256,7 +253,7 @@ export function StoryDetailScreen({ work, suggestion, onSaved, onRemoved, onRelo
             <div style={{ display: 'flex', gap: 10, padding: 13, borderRadius: 'var(--radius-md)', background: 'var(--success-soft, rgba(23,201,100,.12))', marginBottom: 18 }}>
               <Icon icon="solar:refresh-circle-bold" size={20} color="var(--success, #17c964)" style={{ flexShrink: 0, marginTop: 1 }} />
               <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                <b style={{ color: 'var(--text-primary)' }}>Following — auto-updating.</b> This work is still ongoing, so FicStash checks it for new chapters on every sync (each night and whenever you tap Sync) and downloads them automatically. It stops on its own once the work is complete.
+                <b style={{ color: 'var(--text-primary)' }}>Following — auto-updating.</b> This work is still ongoing, so BookStash checks it for new chapters on each sync (pull down to refresh, or tap Sync) and downloads them automatically. It stops on its own once the work is complete.
               </div>
             </div>
           )}
@@ -293,7 +290,9 @@ export function StoryDetailScreen({ work, suggestion, onSaved, onRemoved, onRelo
               <div className="set-ic"><Icon icon="solar:square-top-down-linear" size={18} /></div>
               <div style={{ flex: 1 }}>
                 <div className="set-h">{openLabel}</div>
-                <div className="set-d">Follow or bookmark on the site — FicStash never touches your account.</div>
+                <div className="set-d">{meta.externalUrl
+                  ? 'Open the external link you added to this work.'
+                  : `Bookmark, comment or follow on ${srcLabel} — BookStash only reads, never touches your account.`}</div>
               </div>
               <Icon icon="solar:arrow-right-up-linear" size={18} color="var(--text-tertiary)" />
             </button>
