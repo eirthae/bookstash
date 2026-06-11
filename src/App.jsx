@@ -10,7 +10,7 @@ import { SettingsScreen } from './screens/Settings.jsx';
 import { AboutScreen } from './screens/About.jsx';
 import { fetchWorks } from './lib/library.js';
 
-const READER_DEFAULTS = { theme: 'dark', font: 'serif', size: 18 };
+const READER_DEFAULTS = { theme: 'dark', font: 'serif', size: 19, leading: 1.70, margin: 26, brightness: 1 };
 
 // BookStash — local-first reader, sharing FicStash's UI/UX. On-device library
 // (IndexedDB), the work fetched/parsed on the phone. A FicStash-style nav stack
@@ -67,7 +67,7 @@ export default function App() {
         onRemoved={(id) => (p.onRemoved || removeFromLibrary)(id)}
         onReload={reload} />;
     }
-    if (top.screen === 'reader') return <ReaderScreen work={p.work} settings={reader} setSettings={updateReader} onBack={n.pop} />;
+    if (top.screen === 'reader') return <ReaderScreen work={p.work} workId={p.workId} chapterN={p.chapterN} chapterTitle={p.chapterTitle} settings={reader} setSettings={updateReader} nav={n} />;
     if (top.screen === 'about') return <AboutScreen onBack={n.pop} />;
     return null;
   };
