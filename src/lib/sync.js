@@ -1,5 +1,6 @@
 import { getAllWorks, appendChapters, recordChapterUpdate, updateWork, getGroups, patchGroup, upsertMatches } from './db.js';
 import { fetchWork, searchTags } from './sources/ao3.js';
+import { fetchUpdates as rrFetchUpdates } from './sources/royalroad.js';
 import { discoverBooks } from './goodreads.js';
 
 // On-device sync engine. This is the job FicStash's server worker does, run on
@@ -16,8 +17,8 @@ export async function triggerSync({ onProgress } = {}) {
   let works;
   try { works = await getAllWorks(); } catch (e) { return { ok: false, error: 'Storage unavailable' }; }
 
-  // Followed = ongoing AO3 works we have a source id for.
-  const ongoing = (works || []).filter((w) => w.source === 'ao3' && w.status !== 'complete' && w.sourceId);
+  // Followed = ongoing AO3 / Royal Road works we have a source id for.
+  const ongoing = (works || []).filter((w) => (w.source === 'ao3' || w.source === 'royalroad') && w.status !== 'complete' && w.sourceId);
   let newChapters = 0, checked = 0, failed = 0;
 
   for (const w of ongoing) {
@@ -25,23 +26,28 @@ export async function triggerSync({ onProgress } = {}) {
     checked += 1;
     if (onProgress) onProgress({ done: checked, total: ongoing.length, title: w.title });
     try {
-      const fresh = await fetchWork(w.sourceId);
-      if (fresh.restricted) continue;
       const stored = w.chapters || 0;
-      const freshCount = fresh.chapters || 0;
-      if (freshCount > stored) {
-        const newChs = (fresh.chaptersData || []).filter((c) => c.n > stored);
+      let newChs = [], total = stored, status = w.status;
+      if (w.source === 'ao3') {
+        const fresh = await fetchWork(w.sourceId);
+        if (fresh.restricted) continue;
+        total = fresh.chapters || 0; status = fresh.status;
+        if (total > stored) newChs = (fresh.chaptersData || []).filter((c) => c.n > stored);
+      } else { // royalroad — re-read fiction page, fetch only chapters beyond stored
+        const upd = await rrFetchUpdates(w.sourceId, stored);
+        total = upd.total; status = upd.status; newChs = upd.newChapters;
+      }
+      if (newChs.length) {
         await appendChapters(w.id, newChs);
         await recordChapterUpdate(w, newChs);
+        const words = (w.words || 0) + newChs.reduce((s, c) => s + (c.words || 0), 0);
         await updateWork(w.id, {
-          chapters: freshCount, chaptersTotal: fresh.chaptersTotal,
-          words: fresh.words || w.words, status: fresh.status,
-          follow: fresh.status !== 'complete', sourceUpdated: new Date().toISOString(),
+          chapters: total, chaptersTotal: status === 'complete' ? total : (w.chaptersTotal ?? null),
+          words, status, follow: status !== 'complete', sourceUpdated: new Date().toISOString(),
         });
         newChapters += newChs.length;
-      } else if (fresh.status === 'complete') {
-        // No new chapters and the work just completed → stop following it.
-        await updateWork(w.id, { status: 'complete', follow: false, chaptersTotal: fresh.chaptersTotal });
+      } else if (status === 'complete') {
+        await updateWork(w.id, { status: 'complete', follow: false, chaptersTotal: total });
       }
     } catch (e) {
       failed += 1;

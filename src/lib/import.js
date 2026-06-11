@@ -3,6 +3,7 @@ import { addWork } from './db.js';
 import { fetchHtml } from './fetch.js';
 import { extractArticle } from './extract.js';
 import { isAo3Url, workIdFromUrl, fetchWork as fetchAo3Work } from './sources/ao3.js';
+import { isRrUrl, workIdFromUrl as rrWorkId, fetchWork as fetchRrWork } from './sources/royalroad.js';
 
 // Import one file into the on-device library. Returns a per-file result so the
 // bulk caller can show "12 added, 1 skipped" with reasons.
@@ -53,6 +54,17 @@ export async function importLink(url) {
       return { ok: true, work };
     } catch (e) {
       return { ok: false, error: (e && e.message) ? `Couldn’t read that AO3 work (${e.message}).` : 'Couldn’t read that AO3 work.' };
+    }
+  }
+
+  // Royal Road — dedicated parser (fiction page + every chapter body).
+  if (isRrUrl(clean) && rrWorkId(clean)) {
+    try {
+      const w = await fetchRrWork(rrWorkId(clean));
+      const work = await addWork(w, w.chaptersData);
+      return { ok: true, work };
+    } catch (e) {
+      return { ok: false, error: (e && e.message) ? `Couldn’t read that Royal Road work (${e.message}).` : 'Couldn’t read that Royal Road work.' };
     }
   }
 
