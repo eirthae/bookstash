@@ -30,3 +30,26 @@ test('newId returns a non-empty unique-ish string', () => {
   assert.ok(a.length > 0);
   assert.notEqual(a, b);
 });
+
+import { groupBySeries } from './db.js';
+
+test('groupBySeries clusters by series, orders by index, loose separate', () => {
+  const list = [
+    { id: 'a', title: 'B2', series: 'Saga', seriesIndex: 2 },
+    { id: 'b', title: 'B1', series: 'Saga', seriesIndex: 1 },
+    { id: 'c', title: 'Standalone', series: '' },
+    { id: 'd', title: 'A1', series: 'Apple', seriesIndex: 1 },
+  ];
+  const { seriesGroups, loose } = groupBySeries(list);
+  assert.equal(seriesGroups.length, 2);
+  assert.equal(seriesGroups[0].name, 'Apple'); // alphabetical sections
+  assert.equal(seriesGroups[1].name, 'Saga');
+  assert.deepEqual(seriesGroups[1].items.map((w) => w.id), ['b', 'a']); // by index
+  assert.deepEqual(loose.map((w) => w.id), ['c']);
+});
+
+test('groupBySeries with no series → no groups', () => {
+  const { seriesGroups, loose } = groupBySeries([{ id: 'x', series: '' }]);
+  assert.equal(seriesGroups.length, 0);
+  assert.equal(loose.length, 1);
+});

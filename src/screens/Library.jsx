@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import Icon from '../components/Icon.jsx';
-import { sortWorks } from '../lib/db.js';
+import { sortWorks, groupBySeries } from '../lib/db.js';
 import { importFiles, importLink, summarize } from '../lib/import.js';
 
 // The library: a list of on-device books + a multi-file (bulk) importer. Tapping
@@ -75,9 +75,7 @@ export function LibraryScreen({ works, onReload, onOpen }) {
         ) : sorted.length === 0 ? (
           <EmptyLibrary onPick={pick} />
         ) : (
-          <div className="booklist">
-            {sorted.map((w) => <BookCard key={w.id} w={w} onClick={() => onOpen(w)} />)}
-          </div>
+          <BookList works={sorted} onOpen={onOpen} />
         )}
       </div>
 
@@ -139,6 +137,31 @@ function AddSheet({ onClose, onUpload, onAddLink }) {
         </div>
       </div>
     </>
+  );
+}
+
+// The shelf: books that share a series cluster under a series header (ordered by
+// part); standalone books list below. Falls back to a plain list when nothing
+// has series metadata.
+function BookList({ works, onOpen }) {
+  const { seriesGroups, loose } = groupBySeries(works);
+  if (seriesGroups.length === 0) {
+    return <div className="booklist">{works.map((w) => <BookCard key={w.id} w={w} onClick={() => onOpen(w)} />)}</div>;
+  }
+  return (
+    <div className="booklist">
+      {seriesGroups.map((g) => (
+        <Fragment key={g.name}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '12px 2px 6px', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>
+            <Icon icon="solar:bookmark-square-bold" size={16} color="var(--accent)" />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-tertiary)' }}>{g.items.length}</span>
+          </div>
+          {g.items.map((w) => <BookCard key={w.id} w={w} onClick={() => onOpen(w)} />)}
+        </Fragment>
+      ))}
+      {loose.map((w) => <BookCard key={w.id} w={w} onClick={() => onOpen(w)} />)}
+    </div>
   );
 }
 

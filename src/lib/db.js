@@ -66,6 +66,27 @@ export function sortWorks(list, mode = 'added') {
   return arr;
 }
 
+// Auto-group books that share a series (from EPUB calibre:series / collection
+// metadata), ordered by series index; everything else is "loose". Series
+// sections sort alphabetically; loose keeps the incoming order. Pure + tested.
+export function groupBySeries(list) {
+  const byKey = new Map();
+  const loose = [];
+  for (const w of list || []) {
+    const key = (w.series || '').trim();
+    if (!key) { loose.push(w); continue; }
+    let g = byKey.get(key.toLowerCase());
+    if (!g) { g = { name: w.series, items: [] }; byKey.set(key.toLowerCase(), g); }
+    g.items.push(w);
+  }
+  const seriesGroups = [...byKey.values()];
+  for (const g of seriesGroups) {
+    g.items.sort((a, b) => (a.seriesIndex ?? 1e9) - (b.seriesIndex ?? 1e9) || (a.title || '').localeCompare(b.title || ''));
+  }
+  seriesGroups.sort((a, b) => a.name.localeCompare(b.name));
+  return { seriesGroups, loose };
+}
+
 // ---- data access -----------------------------------------------------------
 // Insert a parsed book: a work record + its chapters, in one transaction.
 // `meta` is the parsed metadata; `chapters` is [{ n, title, content, words }].
