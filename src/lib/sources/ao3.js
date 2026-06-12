@@ -263,12 +263,13 @@ export async function searchLanguage(code, page = 1) {
 export async function autocompleteTag(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return [];
-  // AO3 returns [{ id, name }, …] JSON. Pass the term as a param (raw — fetchJson
-  // lets CapacitorHttp encode it once; manual encoding here double-encodes spaces).
+  // AO3 returns [{ id, name }, …] JSON. The term goes inline in the query string
+  // (encoded once) — that's the exact request curl/the worker make and it 200s;
+  // CapacitorHttp's `params` option mangled the URL into a 404 on-device.
   // A real failure (non-2xx, or a non-array body — e.g. a Cloudflare challenge
   // page) throws with a reason the picker can surface, instead of silently
   // collapsing to "no matches".
-  const r = await fetchJson(`https://${AO3_HOST}/autocomplete/tag`, { term: q });
+  const r = await fetchJson(`https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`);
   if (!r || r.status < 200 || r.status >= 300) throw new Error(`AO3 ${r ? r.status : '?'}`);
   if (!Array.isArray(r.data)) throw new Error('AO3 sent an unexpected response');
   return r.data

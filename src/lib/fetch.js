@@ -34,9 +34,9 @@ export async function fetchHtml(url) {
 //     back null for an array, silently emptying the list. Text mode reliably
 //     returns the body, which we parse ourselves (CapacitorHttp may still have
 //     auto-parsed it by content-type, so we accept an already-parsed value too).
-//   • `params` (NOT an inline ?query): passing the query inline and letting
-//     CapacitorHttp re-encode it double-encodes spaces (`enemies to` →
-//     `enemies%2520to`), so AO3 matches nothing. Raw params encode exactly once.
+// NB: callers put the query inline in `url` (encoded once). CapacitorHttp's
+// `params` option mangled AO3's autocomplete URL into a 404 on-device, so it's
+// left optional/unused here rather than relied on.
 export async function fetchJson(url, params) {
   const res = await CapacitorHttp.get({
     url,
