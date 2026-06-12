@@ -4,7 +4,9 @@ import Icon from '../components/Icon.jsx';
 import { Segmented } from '../components/ui.jsx';
 import { fetchOfflineStats } from '../lib/library.js';
 
-const APP_VERSION = '0.8.0';
+// Stamped at build time from the release tag (VITE_APP_VERSION, e.g. "v0.8.10");
+// "dev" for local builds. Lets you confirm exactly which APK is installed.
+const APP_VERSION = (import.meta.env && import.meta.env.VITE_APP_VERSION) || 'dev';
 
 export function SettingsScreen({ appMode, setAppMode, nav }) {
   const [storage, setStorage] = useState(undefined); // undefined=loading, null=unavailable
@@ -56,7 +58,7 @@ export function SettingsScreen({ appMode, setAppMode, nav }) {
           </button>
         </SetSection>
 
-        <div style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--text-tertiary)', paddingTop: 4 }}>BookStash · on-device · v{APP_VERSION}</div>
+        <div style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--text-tertiary)', paddingTop: 4 }}>BookStash · on-device · {APP_VERSION}</div>
       </div>
     </div>
   );

@@ -45,6 +45,7 @@ export async function fetchJson(url) {
     responseType: 'text',
   });
   let data = res && res.data;
+  const raw = typeof data === 'string' ? data : '';
   if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { data = null; } }
-  return { status: res ? res.status : 0, data };
+  return { status: res ? res.status : 0, data, url: (res && res.url) || url, raw };
 }

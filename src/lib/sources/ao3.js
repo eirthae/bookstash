@@ -270,8 +270,17 @@ export async function autocompleteTag(term) {
   // page) throws with a reason the picker can surface, instead of silently
   // collapsing to "no matches".
   const r = await fetchJson(`https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`);
-  if (!r || r.status < 200 || r.status >= 300) throw new Error(`AO3 ${r ? r.status : '?'}`);
-  if (!Array.isArray(r.data)) throw new Error('AO3 sent an unexpected response');
+  // On failure, embed the status + the URL CapacitorHttp actually hit + a short
+  // body preview, so a single screenshot of the error tells us exactly what went
+  // wrong (mangled URL? wrong status? challenge page?) instead of guessing.
+  const where = (r && r.url) || '?';
+  if (!r || r.status < 200 || r.status >= 300) {
+    throw new Error(`AO3 ${r ? r.status : '?'} @ ${where}`);
+  }
+  if (!Array.isArray(r.data)) {
+    const preview = (r.raw || '').replace(/\s+/g, ' ').slice(0, 50);
+    throw new Error(`AO3 ${r.status} non-JSON @ ${where} :: ${preview}`);
+  }
   return r.data
     .map((d) => (typeof d === 'string' ? d : ((d && (d.name ?? d.id)) || '')))
     .filter(Boolean);

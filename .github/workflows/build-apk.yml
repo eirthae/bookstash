@@ -33,6 +33,11 @@ jobs:
         run: npm test
 
       - name: Build web bundle
+        # Stamp the build with the tag (or "dev" for manual runs) so the app can
+        # show which version is actually installed — kills "am I testing the
+        # right APK?" confusion when several builds are floating around.
+        env:
+          VITE_APP_VERSION: ${{ github.ref_name }}
         run: npm run build
 
       - name: Set up Java
