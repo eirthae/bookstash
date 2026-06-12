@@ -28,7 +28,8 @@ export function AddMenu({ open, onClose, onChanged }) {
     const results = await importFiles(files, setBusy);
     setBusy(null);
     const s = summarize(results);
-    onChanged?.(`${s.added} added${s.failed ? ` · ${s.failed} skipped` : ''}`);
+    const added = results.find((r) => r.ok && r.work);
+    onChanged?.(`${s.added} added${s.failed ? ` · ${s.failed} skipped` : ''}`, added && added.work);
     onClose();
   };
 
@@ -60,7 +61,7 @@ export function AddMenu({ open, onClose, onChanged }) {
     if (!u || state.kind === 'busy') return;
     setState({ kind: 'busy' });
     const res = await importLink(u);
-    if (res.ok) { setUrl(''); setState({ kind: 'idle' }); onChanged?.('Added — saved offline.'); onClose(); }
+    if (res.ok) { setUrl(''); setState({ kind: 'idle' }); onChanged?.('Added — saved offline.', res.work); onClose(); }
     else if (res.restricted) setState({ kind: 'restricted', url: res.url, msg: res.error });
     else setState({ kind: 'error', msg: res.error });
   };

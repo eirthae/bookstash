@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Preferences } from '@capacitor/preferences';
+import { App as CapApp } from '@capacitor/app';
 import { BottomNav } from './components/chrome.jsx';
 import { AddMenu } from './components/AddMenu.jsx';
-import { LibraryScreen } from './screens/Library.jsx';
+import { LibraryScreen, shelfOf } from './screens/Library.jsx';
 import { WhatsNewScreen } from './screens/WhatsNew.jsx';
 import { DiscoverScreen, TagResultsScreen, LaterScreen } from './screens/Discover.jsx';
 import { StoryDetailScreen } from './screens/Detail.jsx';
@@ -28,6 +29,7 @@ export default function App() {
   // Navigation: a tab + a stack of pushed screens (detail / reader / about).
   const [tab, setTab] = useState('library');
   const [stack, setStack] = useState([]);
+  const [gotoShelf, setGotoShelf] = useState(null); // { shelf, nonce } after a custom add
   const nav = useRef();
   nav.current = {
     push: (screen, props = {}) => setStack((s) => [...s, { screen, props }]),
@@ -73,16 +75,39 @@ export default function App() {
   }, [reload]);
 
   const removeFromLibrary = (id) => setWorks((ws) => (ws || []).filter((w) => w.id !== id));
-  const onAdded = () => { reload(); setRefreshKey((k) => k + 1); setStack([]); setTab('library'); };
+  // After a custom add, jump to Library and open the added work's shelf (so a
+  // freshly-added fic lands on Fics even if you were elsewhere).
+  const onAdded = (msg, work) => {
+    reload(); setRefreshKey((k) => k + 1); setStack([]); setTab('library');
+    setGotoShelf((g) => ({ shelf: shelfOf(work), nonce: (g ? g.nonce : 0) + 1 }));
+  };
 
   const switchTab = (id) => { setStack([]); setAddOpen(false); setTab(id); };
 
   const top = stack[stack.length - 1];
   const showNav = !top;
 
+  // Android hardware/predictive back (the edge swipe-to-go-back gesture fires
+  // this). Walk the nav back the way the on-screen back arrow would: close the
+  // Add sheet → pop a pushed screen → return to Library → otherwise background
+  // the app. Registered once; reads live nav state from a ref.
+  const navState = useRef({});
+  navState.current = { stack, tab, addOpen };
+  useEffect(() => {
+    let handle;
+    CapApp.addListener('backButton', () => {
+      const s = navState.current;
+      if (s.addOpen) { setAddOpen(false); return; }
+      if (s.stack && s.stack.length) { setStack((st) => st.slice(0, -1)); return; }
+      if (s.tab !== 'library') { setTab('library'); return; }
+      CapApp.minimizeApp();
+    }).then((h) => { handle = h; }).catch(() => {});
+    return () => { if (handle) handle.remove(); };
+  }, []);
+
   const renderTab = () => {
     const n = nav.current;
-    if (tab === 'library') return <LibraryScreen works={works} onRemove={removeFromLibrary} onReload={reload} refreshKey={refreshKey} nav={n} />;
+    if (tab === 'library') return <LibraryScreen works={works} onRemove={removeFromLibrary} onReload={reload} refreshKey={refreshKey} gotoShelf={gotoShelf} nav={n} />;
     if (tab === 'whatsnew') return <WhatsNewScreen chapters={[]} matches={[]} nav={n} />;
     if (tab === 'discover') return <DiscoverScreen nav={n} />;
     return <SettingsScreen appMode={appMode} setAppMode={changeMode} nav={n} />;

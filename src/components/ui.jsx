@@ -3,42 +3,53 @@ import Icon from './Icon.jsx';
 import { COVER_PALETTES, paletteFor } from '../data/sample.js';
 
 // Pull-to-refresh scroll container (BookStash on-device sync). Pull down past a
-// threshold while at the top → calls onRefresh (the sync). A soft gesture: it
-// never blocks normal scrolling.
+// threshold while at the top → calls onRefresh (the sync). Native feel: the
+// whole page glides down with your finger to reveal the spinner above it, then
+// springs back on release — so the indicator can never overlap the shelf tabs.
 export function PullToRefresh({ onRefresh, children, className = 'scroll', style }) {
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const startY = useRef(null);
   const ref = useRef(null);
   const THRESHOLD = 64;
   const onTouchStart = (e) => {
-    startY.current = (ref.current && ref.current.scrollTop <= 0 && !refreshing) ? e.touches[0].clientY : null;
+    if (ref.current && ref.current.scrollTop <= 0 && !refreshing) {
+      startY.current = e.touches[0].clientY; setDragging(true);
+    } else startY.current = null;
   };
   const onTouchMove = (e) => {
     if (startY.current == null) return;
     const dy = e.touches[0].clientY - startY.current;
     if (dy > 0 && ref.current.scrollTop <= 0) setPull(Math.min(dy * 0.5, 90));
-    else if (dy <= 0) { startY.current = null; setPull(0); }
+    else if (dy <= 0) { startY.current = null; setPull(0); setDragging(false); }
   };
   const onTouchEnd = async () => {
     const go = startY.current != null && pull >= THRESHOLD && !refreshing;
-    startY.current = null;
-    if (go) { setRefreshing(true); setPull(40); try { await onRefresh?.(); } finally { setRefreshing(false); setPull(0); } }
+    startY.current = null; setDragging(false);
+    if (go) { setRefreshing(true); setPull(0); try { await onRefresh?.(); } finally { setRefreshing(false); } }
     else setPull(0);
   };
+  // How far the page is pushed down (and the spinner gap above it).
+  const offset = refreshing ? 48 : pull;
   return (
     <div className={className} ref={ref} style={{ position: 'relative', ...style }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      {(pull > 0 || refreshing) && (
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center',
-          alignItems: 'center', height: refreshing ? 40 : pull, color: 'var(--accent)', fontSize: 12, fontWeight: 600,
-          gap: 7, pointerEvents: 'none', zIndex: 4, overflow: 'hidden' }}>
-          {refreshing
-            ? <><span className="spin" /> Syncing…</>
-            : <><Icon icon="solar:arrow-down-linear" size={17} style={{ transform: pull >= THRESHOLD ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} /> {pull >= THRESHOLD ? 'Release to sync' : 'Pull to sync'}</>}
-        </div>
-      )}
-      {children}
+      {/* Spinner lives in the revealed gap at the very top, BEHIND the page. */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: Math.max(offset, 0),
+        display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--accent)',
+        fontSize: 12, fontWeight: 600, gap: 7, pointerEvents: 'none', zIndex: 0, overflow: 'hidden',
+        opacity: offset > 0 ? 1 : 0 }}>
+        {refreshing
+          ? <><span className="spin" /> Syncing…</>
+          : <><Icon icon="solar:arrow-down-linear" size={17} style={{ transform: pull >= THRESHOLD ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} /> {pull >= THRESHOLD ? 'Release to sync' : 'Pull to sync'}</>}
+      </div>
+      {/* The page itself glides down over the spinner, then springs back. */}
+      <div style={{ transform: `translateY(${offset}px)`, position: 'relative', zIndex: 1,
+        background: 'var(--surface)', minHeight: '100%',
+        transition: dragging ? 'none' : 'transform .34s cubic-bezier(.2,.85,.25,1)' }}>
+        {children}
+      </div>
     </div>
   );
 }

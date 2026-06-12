@@ -16,7 +16,8 @@ function fandomName(work) {
 // Which shelf a work belongs to. Routing is automatic by how it entered the
 // library: uploaded EPUBs are Books; AO3 works (bookmarks, tag saves, AO3 links)
 // are Fics; everything else added from another site is a Story.
-function shelfOf(work) {
+export function shelfOf(work) {
+  if (!work) return 'fics';
   if ((work.origin || '') === 'upload') return 'books';
   if (work.source === 'ao3') return 'fics';
   return 'stories';
@@ -79,11 +80,14 @@ function SortDropdown({ value, options, onChange, align = 'right' }) {
   );
 }
 
-export function LibraryScreen({ works, layout = 'fandom', connected = true, onRemove, onReload, refreshKey, nav }) {
+export function LibraryScreen({ works, layout = 'fandom', connected = true, onRemove, onReload, refreshKey, gotoShelf, nav }) {
   const open = (w) => nav.push('detail', { work: w, onRemoved: onRemove, onReload });
   const [toast, showToast] = useToast();
   const [syncing, setSyncing] = useState(false);
   const [shelf, setShelf] = useState('fics');
+  // After a custom add (link/upload), App asks us to jump to the added work's
+  // shelf — so adding a fic lands you on Fics even if you were on another shelf.
+  useEffect(() => { if (gotoShelf && gotoShelf.shelf) setShelf(gotoShelf.shelf); }, [gotoShelf]);
   const [status, setStatus] = useState('all');     // all | ongoing | complete (fics/stories)
   const [sort, setSort] = useState('default');      // default | added | updated | title
   const [pendingLinks, setPendingLinks] = useState([]);

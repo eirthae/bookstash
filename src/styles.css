@@ -146,16 +146,10 @@ input,textarea { font-family:inherit; }
 .chapter-body img { max-width:100%; height:auto; }
 .chapter-body h1,.chapter-body h2,.chapter-body h3 { font-weight:700; line-height:1.3; margin:1.4em 0 .5em; }
 
-.reader-top, .reader-bottom { position:absolute; left:0; right:0; z-index:5; display:flex; align-items:center;
-  background:var(--surface); transition:opacity .2s ease, transform .2s ease; }
-.reader-top { top:0; gap:10px; padding:calc(8px + env(safe-area-inset-top)) 12px 10px; border-bottom:1px solid var(--border); }
-.reader-bottom { bottom:0; justify-content:space-between; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); }
-.reader-top.hidden { opacity:0; transform:translateY(-100%); pointer-events:none; }
-.reader-bottom.hidden { opacity:0; transform:translateY(100%); pointer-events:none; }
-.reader-title { flex:1; min-width:0; }
-.reader-title .rt-t { font-size:14.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.reader-title .rt-s { font-size:11.5px; color:var(--text-tertiary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.rb-label { font-size:12.5px; font-weight:600; color:var(--text-secondary); }
+/* Reader chrome (top/bottom bars) is defined once, FicStash-exact, in the
+   "reader chrome (auto-hide)" block below — don't redeclare it here (an old
+   display:flex on .reader-bottom used to stack the progress bar and nav row
+   side-by-side instead of stacked). */
 
 .reader-skel { padding:2px 0; }
 .reader-skel span { display:block; height:15px; margin-bottom:14px; border-radius:6px;
@@ -170,17 +164,13 @@ input,textarea { font-family:inherit; }
 .sortseg button.on { background:var(--accent-soft); border-color:transparent; color:var(--accent); }
 
 /* ---- reader themes (reading surface only) --------------------------------- */
-.reader[data-reader-theme="dark"]  { --reader-bg:#121214; --reader-surface:#1d1d20; --reader-text:#cfcfd4; --reader-text-dim:#86868e; --reader-ui:#e6e6ea; --reader-border:rgba(255,255,255,.10); }
-.reader[data-reader-theme="light"] { --reader-bg:#ffffff; --reader-surface:#f4f4f6; --reader-text:#1f2125; --reader-text-dim:#787a82; --reader-ui:#1f2125; --reader-border:rgba(17,17,17,.10); }
-.reader[data-reader-theme="sepia"] { --reader-bg:#f1e7d0; --reader-surface:#e7dabd; --reader-text:#4f4334; --reader-text-dim:#8a7a5e; --reader-ui:#4f4334; --reader-border:rgba(79,67,52,.15); }
-.reader[data-reader-theme="yellow"]{ --reader-bg:#fbf1c4; --reader-surface:#f5e7a6; --reader-text:#46401f; --reader-text-dim:#8a7f44; --reader-ui:#46401f; --reader-border:rgba(70,64,31,.16); }
+.reader[data-reader-theme="dark"]  { --reader-bg:#121214; --reader-surface:#1d1d20; --reader-text:#cfcfd4; --reader-text-dim:#86868e; --reader-ui:#e6e6ea; --reader-accent:#a072de; --reader-border:rgba(255,255,255,.1); --reader-scrim:linear-gradient(180deg,rgba(18,18,20,.96),rgba(18,18,20,0)); --reader-scrim-b:linear-gradient(0deg,rgba(18,18,20,.96),rgba(18,18,20,0)); }
+.reader[data-reader-theme="light"] { --reader-bg:#ffffff; --reader-surface:#f4f4f6; --reader-text:#1f2125; --reader-text-dim:#787a82; --reader-ui:#1f2125; --reader-accent:#7828c8; --reader-border:rgba(17,17,17,.1); --reader-scrim:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,0)); --reader-scrim-b:linear-gradient(0deg,rgba(255,255,255,.96),rgba(255,255,255,0)); }
+.reader[data-reader-theme="sepia"] { --reader-bg:#f1e7d0; --reader-surface:#e7dabd; --reader-text:#4f4334; --reader-text-dim:#8a7a5e; --reader-ui:#4f4334; --reader-accent:#9a5b2d; --reader-border:rgba(79,67,52,.15); --reader-scrim:linear-gradient(180deg,rgba(241,231,208,.96),rgba(241,231,208,0)); --reader-scrim-b:linear-gradient(0deg,rgba(241,231,208,.96),rgba(241,231,208,0)); }
+.reader[data-reader-theme="yellow"]{ --reader-bg:#fbf1c4; --reader-surface:#f5e7a6; --reader-text:#46401f; --reader-text-dim:#8a7f44; --reader-ui:#46401f; --reader-accent:#9a7b16; --reader-border:rgba(70,64,31,.16); --reader-scrim:linear-gradient(180deg,rgba(251,241,196,.96),rgba(251,241,196,0)); --reader-scrim-b:linear-gradient(0deg,rgba(251,241,196,.96),rgba(251,241,196,0)); }
 
 /* reader surfaces follow the reader theme tokens (override the Phase-1 app-token colors) */
 .reader { background:var(--reader-bg); color:var(--reader-text); }
-.reader-top, .reader-bottom { background:var(--reader-bg); border-color:var(--reader-border); }
-.reader-top .iconbtn, .reader-bottom .iconbtn { color:var(--reader-ui); }
-.reader-title .rt-t { color:var(--reader-ui); }
-.reader-title .rt-s, .rb-label { color:var(--reader-text-dim); }
 .reader-article .ch-kicker { color:var(--reader-text-dim); }
 .reader-article .ch-head { color:var(--reader-text); font-family:var(--r-font, var(--font-serif)); }
 .chapter-body { color:var(--reader-text); font-family:var(--r-font, var(--font-serif)); font-size:var(--r-size, 18px); }
