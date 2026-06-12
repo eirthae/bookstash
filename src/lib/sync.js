@@ -2,8 +2,8 @@ import { getAllWorks, appendChapters, recordChapterUpdate, updateWork, getGroups
 import { fetchWork, searchTags, searchLanguage, seriesWorks } from './sources/ao3.js';
 import { getAllFollowedSeries, removeFollowedSeries } from './series.js';
 import { fetchDiscoveryPrefs } from './discovery.js';
-import { fetchUpdates as rrFetchUpdates } from './sources/royalroad.js';
-import { fetchUpdates as shFetchUpdates } from './sources/scribblehub.js';
+import { fetchUpdates as rrFetchUpdates, searchTags as rrSearchTags } from './sources/royalroad.js';
+import { fetchUpdates as shFetchUpdates, searchTags as shSearchTags } from './sources/scribblehub.js';
 import { discoverBooks } from './goodreads.js';
 
 // On-device sync engine. This is the job FicStash's server worker does, run on
@@ -76,7 +76,7 @@ export async function triggerSync({ onProgress } = {}) {
   try { groups = await getGroups(); } catch (e) { groups = []; }
   for (const g of groups) {
     const source = g.source || 'ao3';
-    if (source !== 'ao3' && source !== 'books') continue; // RR/SH discovery needs their parsers (later)
+    if (!['ao3', 'books', 'royalroad', 'scribblehub'].includes(source)) continue;
     const langGroup = (g.tags || []).find((t) => t.kind === 'language');
     const include = (g.tags || []).filter((t) => t.kind !== 'language').map((t) => t.name).filter(Boolean);
     if (!langGroup && !include.length) continue;
@@ -90,6 +90,14 @@ export async function triggerSync({ onProgress } = {}) {
           source: 'books', sourceId: b.id, title: b.title, author: b.author,
           summary: '', fandom: '', tags: [], status: 'complete', words: 0, url: b.url,
         }));
+      } else if (source === 'royalroad') {
+        if (g.matchMode === 'any' && include.length > 1) {
+          for (const t of include) { metas.push(...await rrSearchTags([t], exclude)); await sleep(800); }
+        } else {
+          metas = await rrSearchTags(include, exclude);
+        }
+      } else if (source === 'scribblehub') {
+        metas = await shSearchTags(include); // genre RSS (first term)
       } else if (langGroup) {
         metas = await searchLanguage(langGroup.id || langGroup.name);
       } else if (g.matchMode === 'any' && include.length > 1) {

@@ -47,3 +47,20 @@ test('parseChapter returns body, strips author notes', () => {
 test('parseSeries throws on a non-series page', () => {
   assert.throws(() => parseSeries('<html><body>nope</body></html>', '1'));
 });
+
+// --- genre discovery (RSS) -------------------------------------------------
+const { parseGenreFeed } = await import('./scribblehub.js');
+const FEED = `<rss><channel>
+  <item><title><![CDATA[Reborn & Ready]]></title><link>https://www.scribblehub.com/series/77/reborn/</link><dc:creator>auth</dc:creator><description><![CDATA[<p>A tale.</p>]]></description><category>Fantasy</category></item>
+  <item><title>Second</title><link>https://www.scribblehub.com/series/88/two/</link><description>Plain desc</description></item>
+</channel></rss>`;
+test('parseGenreFeed parses SH RSS items', () => {
+  const r = parseGenreFeed(FEED);
+  assert.equal(r.length, 2);
+  assert.equal(r[0].sourceId, '77');
+  assert.equal(r[0].title, 'Reborn & Ready');
+  assert.equal(r[0].author, 'auth');
+  assert.equal(r[0].summary, 'A tale.');
+  assert.deepEqual(r[0].tags.map((t) => t.t), ['Fantasy']);
+  assert.equal(r[1].sourceId, '88');
+});

@@ -97,4 +97,47 @@ export async function fetchUpdates(id, stored = 0) {
   return { newChapters, total: refs.length, status: meta.status };
 }
 
+// ---- genre discovery (RSS) -------------------------------------------------
+const stripCdata = (s) => String(s || '').replace(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/i, '$1').trim();
+const stripHtml = (s) => String(s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const decodeEntities = (s) => String(s || '')
+  .replace(/&#(\d+);/g, (_, n) => { try { return String.fromCharCode(parseInt(n, 10)); } catch (e) { return _; } })
+  .replace(/&(amp|lt|gt|quot|#39|apos);/g, (m) => ({ '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'" }[m] || m));
+const genreSlug = (g) => String(g || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+// Pure parser: a Scribble Hub genre RSS feed → series metas.
+export function parseGenreFeed(xml) {
+  const out = [];
+  const seen = new Set();
+  for (const item of String(xml || '').match(/<item\b[\s\S]*?<\/item>/gi) || []) {
+    const link = (item.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || '';
+    const id = (link.match(/\/series\/(\d+)/) || [])[1];
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const title = decodeEntities(stripCdata((item.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || '')) || 'Untitled';
+    const author = decodeEntities(stripCdata((item.match(/<dc:creator>([\s\S]*?)<\/dc:creator>/i) || [])[1] || ''));
+    const summary = decodeEntities(stripHtml(stripCdata((item.match(/<description>([\s\S]*?)<\/description>/i) || [])[1] || '')));
+    const tags = (item.match(/<category>([\s\S]*?)<\/category>/gi) || [])
+      .map((c) => ({ t: decodeEntities(stripHtml(stripCdata(c.replace(/<\/?category>/gi, '')))), k: 'freeform' })).filter((x) => x.t);
+    out.push({ source: 'scribblehub', sourceId: id, title, author, summary, fandom: '', tags, status: 'ongoing', words: 0, language: 'English', url: workUrl(id) });
+  }
+  return out;
+}
+
+// Discover recent Scribble Hub series in a genre (the genre RSS feed). Multi-tag
+// search uses the first term's genre feed for now.
+export async function searchTags(include) {
+  const inc = (include || []).map((t) => String(t).trim()).filter(Boolean);
+  if (!inc.length) return [];
+  const s = genreSlug(inc[0]);
+  if (!s) return [];
+  try {
+    const r = await fetchHtml(`${BASE}/genre/${s}/feed/`);
+    if (!r || r.status !== 200) return [];
+    return parseGenreFeed(r.html);
+  } catch (e) {
+    return [];
+  }
+}
+
 function text(root, sel) { const el = root.querySelector(sel); return el ? el.textContent : ''; }

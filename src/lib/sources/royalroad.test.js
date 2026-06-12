@@ -54,3 +54,23 @@ test('parseChapter returns body, strips author-note portlet', () => {
 test('parseFiction throws on a non-fiction page', () => {
   assert.throws(() => parseFiction('<html><body>nope</body></html>', '1'));
 });
+
+// --- tag discovery ---------------------------------------------------------
+const { parseSearchResults } = await import('./royalroad.js');
+const SEARCH = `
+<div class="fiction-list">
+  <div class="fiction-list-item row">
+    <h2 class="fiction-title"><a href="/fiction/999/mage-errant">Mage Errant</a></h2>
+    <span class="author">by <span>author</span></span>
+    <div class="tags"><a class="label" href="/x">Fantasy</a><a class="label" href="/y">Magic</a></div>
+    <div class="fiction-description"><p>A weak mage learns.</p></div>
+  </div>
+</div>`;
+test('parseSearchResults parses RR blurbs', () => {
+  const r = parseSearchResults(SEARCH);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].sourceId, '999');
+  assert.equal(r[0].title, 'Mage Errant');
+  assert.deepEqual(r[0].tags.map((t) => t.t), ['Fantasy', 'Magic']);
+  assert.equal(r[0].source, 'royalroad');
+});

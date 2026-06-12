@@ -95,4 +95,45 @@ export async function fetchUpdates(id, stored = 0) {
   return { newChapters, total: refs.length, status: meta.status };
 }
 
+// ---- tag/genre discovery ---------------------------------------------------
+// Pure parser: a Royal Road search/listing page → fiction blurbs.
+export function parseSearchResults(html) {
+  const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+  const out = [];
+  const seen = new Set();
+  for (const item of doc.querySelectorAll('.fiction-list-item, div.search-container .fiction-list-item')) {
+    const a = item.querySelector('.fiction-title a') || item.querySelector('h2 a[href*="/fiction/"]') || item.querySelector('a[href*="/fiction/"]');
+    if (!a) continue;
+    const id = (a.getAttribute('href').match(/\/fiction\/(\d+)/) || [])[1];
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const tags = [...item.querySelectorAll('.tags a.label, span.tags a, a.label')].map((e) => ({ t: clean(e.textContent), k: 'freeform' })).filter((x) => x.t);
+    out.push({
+      source: 'royalroad', sourceId: id, title: clean(a.textContent) || 'Untitled',
+      author: clean(text(item, '.author span') || text(item, '.author a') || text(item, 'span.author')),
+      summary: clean(text(item, '.fiction-description') || text(item, '.description')),
+      fandom: '', tags, status: 'ongoing', words: 0, language: 'English', url: workUrl(id),
+    });
+  }
+  return out;
+}
+
+// Search Royal Road by tags (AND via tagsAdd, exclude via tagsRemove).
+export async function searchTags(include, exclude = []) {
+  const inc = (include || []).map((t) => String(t).trim()).filter(Boolean);
+  if (!inc.length) return [];
+  const p = new URLSearchParams();
+  inc.forEach((t) => p.append('tagsAdd', t));
+  (exclude || []).forEach((t) => p.append('tagsRemove', t));
+  p.set('globalFilters', 'true');
+  p.set('orderBy', 'last_update');
+  try {
+    const r = await fetchHtml(`${BASE}/fictions/search?${p.toString()}`);
+    if (!r || r.status !== 200) return [];
+    return parseSearchResults(r.html);
+  } catch (e) {
+    return [];
+  }
+}
+
 function text(root, sel) { const el = root.querySelector(sel); return el ? el.textContent : ''; }
