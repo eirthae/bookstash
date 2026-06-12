@@ -264,10 +264,10 @@ export async function autocompleteTag(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return [];
   try {
-    // AO3 returns [{ id, name }, …] JSON — fetchJson avoids the String()-mangling
-    // that previously broke this (and thus tag autocomplete).
-    const r = await fetchJson(`https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`);
-    if (!r || r.status !== 200) return [];
+    // AO3 returns [{ id, name }, …] JSON. Pass the term as a param (raw — fetchJson
+    // lets CapacitorHttp encode it once; manual encoding here double-encodes spaces).
+    const r = await fetchJson(`https://${AO3_HOST}/autocomplete/tag`, { term: q });
+    if (!r || r.status < 200 || r.status >= 300) return [];
     return (Array.isArray(r.data) ? r.data : [])
       .map((d) => (typeof d === 'string' ? d : ((d && (d.name ?? d.id)) || '')))
       .filter(Boolean);
