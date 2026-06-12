@@ -80,6 +80,10 @@ export function DiscoverScreen({ nav }) {
 
   const onCreated = (g) => {
     setBuilderOpen(false);
+    // Jump to the shelf the new group lives on, so you land on the tag you just
+    // created instead of staying on whatever shelf you opened the builder from.
+    const s = g && g.source;
+    setTagShelf(s === 'royalroad' || s === 'scribblehub' ? 'sites' : s === 'books' ? 'books' : 'ao3');
     showToast(`Now tracking “${g.name}”`);
     load();
   };
