@@ -263,13 +263,12 @@ export async function searchLanguage(code, page = 1) {
 export async function autocompleteTag(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return [];
-  // AO3 returns [{ id, name }, …] JSON. The term goes inline in the query string
-  // (encoded once) — that's the exact request curl/the worker make and it 200s;
-  // CapacitorHttp's `params` option mangled the URL into a 404 on-device.
-  // A real failure (non-2xx, or a non-array body — e.g. a Cloudflare challenge
-  // page) throws with a reason the picker can surface, instead of silently
-  // collapsing to "no matches".
-  const r = await fetchJson(`https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`);
+  // AO3 returns [{ id, name }, …] JSON. The term goes via `params` (not inline)
+  // because CapacitorHttp encodes a literal "?" in the url into "%3F", so AO3
+  // sees /autocomplete/tag%3Fterm=… and redirects to /404. A real failure
+  // (non-2xx, or a non-array body — e.g. a challenge page) throws with a reason
+  // the picker can surface, instead of silently collapsing to "no matches".
+  const r = await fetchJson(`https://${AO3_HOST}/autocomplete/tag`, { term: q });
   // On failure, embed the status + the URL CapacitorHttp actually hit + a short
   // body preview, so a single screenshot of the error tells us exactly what went
   // wrong (mangled URL? wrong status? challenge page?) instead of guessing.

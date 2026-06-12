@@ -18,7 +18,9 @@ function fandomName(work) {
 // are Fics; everything else added from another site is a Story.
 export function shelfOf(work) {
   if (!work) return 'fics';
-  if ((work.origin || '') === 'upload') return 'books';
+  // Uploaded EPUB/HTML/TXT → Books. The on-device importer stores these with
+  // source:'upload' (older data used origin:'upload') — accept either.
+  if ((work.origin || '') === 'upload' || work.source === 'upload') return 'books';
   if (work.source === 'ao3') return 'fics';
   return 'stories';
 }
@@ -86,8 +88,13 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
   const [syncing, setSyncing] = useState(false);
   const [shelf, setShelf] = useState('fics');
   // After a custom add (link/upload), App asks us to jump to the added work's
-  // shelf — so adding a fic lands you on Fics even if you were on another shelf.
-  useEffect(() => { if (gotoShelf && gotoShelf.shelf) setShelf(gotoShelf.shelf); }, [gotoShelf]);
+  // shelf — so adding a fic lands you on Fics, an upload on Books — and shows a
+  // success toast so the add doesn't feel like it silently failed.
+  useEffect(() => {
+    if (!gotoShelf) return;
+    if (gotoShelf.shelf) setShelf(gotoShelf.shelf);
+    if (gotoShelf.msg) showToast(gotoShelf.msg, 'solar:check-circle-bold');
+  }, [gotoShelf]); // eslint-disable-line react-hooks/exhaustive-deps
   const [status, setStatus] = useState('all');     // all | ongoing | complete (fics/stories)
   const [sort, setSort] = useState('default');      // default | added | updated | title
   const [pendingLinks, setPendingLinks] = useState([]);

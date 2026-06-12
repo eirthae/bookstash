@@ -35,12 +35,16 @@ export async function fetchHtml(url) {
 //     back null for an array, silently emptying the list. Text mode reliably
 //     returns the body, which we parse ourselves (CapacitorHttp may still have
 //     auto-parsed it by content-type, so we accept an already-parsed value too).
-//   • NO `params` option: callers put the query inline in `url` (encoded once).
-//     Passing a `params` key at all — even undefined — makes CapacitorHttp
-//     rebuild the URL on Android and mangle the inline query into a 404.
-export async function fetchJson(url) {
+//   • Query via `params`, NOT inline in the URL: CapacitorHttp percent-encodes a
+//     literal "?" in the url string into "%3F", so AO3 sees the query as part of
+//     the path (/autocomplete/tag%3Fterm=shane) → redirects to /404. Passing the
+//     query through `params` lets the native layer build "?term=…" correctly.
+//     (The `params` key is only added when provided, so plain calls are
+//     byte-for-byte like fetchHtml.)
+export async function fetchJson(url, params) {
   const res = await CapacitorHttp.get({
     url,
+    ...(params ? { params } : {}),
     headers: { 'User-Agent': API_UA, Accept: 'application/json, text/javascript, */*' },
     responseType: 'text',
   });

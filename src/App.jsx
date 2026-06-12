@@ -79,7 +79,7 @@ export default function App() {
   // freshly-added fic lands on Fics even if you were elsewhere).
   const onAdded = (msg, work) => {
     reload(); setRefreshKey((k) => k + 1); setStack([]); setTab('library');
-    setGotoShelf((g) => ({ shelf: shelfOf(work), nonce: (g ? g.nonce : 0) + 1 }));
+    setGotoShelf((g) => ({ shelf: shelfOf(work), msg, nonce: (g ? g.nonce : 0) + 1 }));
   };
 
   const switchTab = (id) => { setStack([]); setAddOpen(false); setTab(id); };
