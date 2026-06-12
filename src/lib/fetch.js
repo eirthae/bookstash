@@ -21,3 +21,19 @@ export async function fetchHtml(url) {
     html: typeof data === 'string' ? data : (data == null ? '' : String(data)),
   };
 }
+
+// Native HTTP fetch for a JSON endpoint (e.g. AO3's tag autocomplete). Returns
+// the PARSED data — CapacitorHttp often auto-parses JSON into an object, and
+// even with responseType 'json' a string body is parsed here as a fallback. (The
+// old path went through fetchHtml, which String()-ifies an object to
+// "[object Object]" and breaks JSON.parse — that's what killed tag autocomplete.)
+export async function fetchJson(url) {
+  const res = await CapacitorHttp.get({
+    url,
+    headers: { 'User-Agent': UA, Accept: 'application/json, text/javascript, */*' },
+    responseType: 'json',
+  });
+  let data = res && res.data;
+  if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { data = null; } }
+  return { status: res ? res.status : 0, data };
+}

@@ -335,8 +335,16 @@ function TagPicker({ picked, onAdd, onRemove, placeholder, accent }) {
           })}
         </div>
       )}
-      <SearchField placeholder={placeholder} value={term} onChange={setTerm} onBlur={onBlur} />
+      <SearchField placeholder={placeholder} value={term} onChange={setTerm} onBlur={onBlur}
+        onSubmit={() => { const t = term.trim(); if (t) add(results[0] || { name: t, id: '', kind: 'freeform' }); }} />
       {searching && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6, paddingLeft: 2 }}>Searching AO3…</div>}
+      {!searching && term.trim().length >= 2 && results.length === 0 && (
+        <button className="pressable" onClick={() => add({ name: term.trim(), id: '', kind: 'freeform' })}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', marginTop: 8, padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 12, background: 'transparent' }}>
+          <Icon icon="solar:add-circle-linear" size={18} color={accent || 'var(--accent)'} />
+          <span style={{ flex: 1, minWidth: 0 }}>Add “{term.trim()}”</span>
+        </button>
+      )}
       {results.length > 0 && (
         <div className="tag-suggest" style={{ marginTop: 8, border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
           {results.map((t) => (

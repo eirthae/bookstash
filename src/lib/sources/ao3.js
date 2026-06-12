@@ -1,4 +1,4 @@
-import { fetchHtml } from '../fetch.js';
+import { fetchHtml, fetchJson } from '../fetch.js';
 
 // On-device AO3 source — the JS port of FicStash's worker ao3.py. Fetches a work
 // from AO3's PUBLIC pages on the phone (native HTTP, no login) and parses clean
@@ -264,10 +264,13 @@ export async function autocompleteTag(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return [];
   try {
-    const r = await fetchHtml(`https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`);
+    // AO3 returns [{ id, name }, …] JSON — fetchJson avoids the String()-mangling
+    // that previously broke this (and thus tag autocomplete).
+    const r = await fetchJson(`https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`);
     if (!r || r.status !== 200) return [];
-    const data = JSON.parse(r.html);
-    return (Array.isArray(data) ? data : []).map((d) => (typeof d === 'string' ? d : (d.name || d.value || d.id))).filter(Boolean);
+    return (Array.isArray(r.data) ? r.data : [])
+      .map((d) => (typeof d === 'string' ? d : ((d && (d.name ?? d.id)) || '')))
+      .filter(Boolean);
   } catch (e) {
     return [];
   }

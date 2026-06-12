@@ -2,8 +2,11 @@ import Icon from '../components/Icon.jsx';
 
 // External links — opened in the user's default browser. NO in-app payment flow,
 // NO in-app purchases, NO gated features. The tip is purely optional support for
-// a free, open-source project.
-const TIP_URL = 'https://wise.com/pay/me/arminem34';
+// a free, open-source project. The tip button opens a GitHub support page (which
+// holds the actual payment link) rather than the payment provider directly — so
+// the provider can change without shipping a new app version, and it reads as a
+// transparent project page rather than a raw payment prompt.
+const TIP_URL = 'https://github.com/eirthae/bookstash/blob/main/SUPPORT.md';
 const REPO_URL = 'https://github.com/eirthae/bookstash';
 
 const SUPPORT_MESSAGE = `Hi, I'm Erin.
