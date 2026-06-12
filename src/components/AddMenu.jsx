@@ -6,11 +6,20 @@ import { importFiles, importLink, summarize } from '../lib/import.js';
 
 // base64 → File. The native picker hands back file bytes as base64 (readData);
 // we rebuild a real File so the existing EPUB/HTML/TXT parsers work unchanged.
+// Robust: strip a possible data-URL prefix and never throw on bad/missing data
+// (an empty File is then reported as "empty" by the importer rather than blowing
+// up the whole batch).
 function fileFromPicked(f) {
-  const bin = atob(f.data || '');
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new File([bytes], f.name || 'file', { type: f.mimeType || '' });
+  let b64 = (f && f.data) || '';
+  const comma = b64.indexOf(',');
+  if (b64.startsWith('data:') && comma !== -1) b64 = b64.slice(comma + 1);
+  let bytes = new Uint8Array(0);
+  try {
+    const bin = atob(b64);
+    bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  } catch (e) { /* leave empty → importFile flags it instead of crashing */ }
+  return new File([bytes], (f && f.name) || 'file', { type: (f && f.mimeType) || '' });
 }
 
 // Add to library — opened by the centered "+" in the bottom nav (like FicStash).
@@ -24,10 +33,19 @@ export function AddMenu({ open, onClose, onChanged }) {
 
   const runImport = async (files) => {
     if (!files || !files.length) return;
+    setState({ kind: 'idle' });
     setBusy({ done: 0, total: files.length });
     const results = await importFiles(files, setBusy);
     setBusy(null);
     const s = summarize(results);
+    if (s.added === 0) {
+      // Nothing imported — keep the sheet open and show why (e.g. unsupported
+      // type, empty/cloud-placeholder file, unreadable EPUB) instead of closing
+      // silently and looking like the picker "did nothing".
+      const reason = (s.failures && s.failures[0] && s.failures[0].error) || 'Couldn’t read the selected file(s).';
+      setState({ kind: 'error', msg: reason });
+      return;
+    }
     const added = results.find((r) => r.ok && r.work);
     onChanged?.(`${s.added} added${s.failed ? ` · ${s.failed} skipped` : ''}`, added && added.work);
     onClose();
@@ -35,17 +53,22 @@ export function AddMenu({ open, onClose, onChanged }) {
 
   // On-device we use the native document picker (Storage Access Framework) — it
   // opens the real file browser (Downloads, Files, SD card…), not the cramped
-  // Drive view, and reliably returns the bytes. The hidden <input> below is only
-  // a web/dev fallback (its change event is flaky in the Android WebView, which
-  // is why "pick a file → nothing happened" was happening on the phone).
+  // Drive view. limit:0 = unlimited (multi-select). The hidden <input> below is
+  // only a web/dev fallback (its change event is flaky in the Android WebView).
   const pick = async () => {
     if (busy) return;
+    setState({ kind: 'idle' });
     if (Capacitor.isNativePlatform()) {
       let picked;
       try {
-        const result = await FilePicker.pickFiles({ readData: true });
+        const result = await FilePicker.pickFiles({ readData: true, limit: 0 });
         picked = (result && result.files) || [];
-      } catch (e) { return; } // user cancelled / picker error
+      } catch (e) {
+        const msg = (e && (e.message || e.errorMessage)) || String(e || '');
+        if (/cancel/i.test(msg)) return; // user backed out of the picker
+        setState({ kind: 'error', msg: `Couldn’t open the file picker: ${msg}` });
+        return;
+      }
       if (!picked.length) return;
       await runImport(picked.map(fileFromPicked));
     } else if (fileInput.current) {
