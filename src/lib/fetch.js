@@ -28,19 +28,19 @@ export async function fetchHtml(url) {
 }
 
 // Native HTTP fetch for a JSON endpoint (e.g. AO3's tag autocomplete). Returns
-// the PARSED data, robust to CapacitorHttp's quirks on Android:
+// the PARSED data. Structurally identical to fetchHtml (which reaches AO3 fine
+// on-device) — same call shape, only the Accept header and parsing differ:
 //   • responseType 'text' (NOT 'json'): AO3's autocomplete returns a top-level
 //     JSON ARRAY, and the native 'json' parser expects an object — it can hand
 //     back null for an array, silently emptying the list. Text mode reliably
 //     returns the body, which we parse ourselves (CapacitorHttp may still have
 //     auto-parsed it by content-type, so we accept an already-parsed value too).
-// NB: callers put the query inline in `url` (encoded once). CapacitorHttp's
-// `params` option mangled AO3's autocomplete URL into a 404 on-device, so it's
-// left optional/unused here rather than relied on.
-export async function fetchJson(url, params) {
+//   • NO `params` option: callers put the query inline in `url` (encoded once).
+//     Passing a `params` key at all — even undefined — makes CapacitorHttp
+//     rebuild the URL on Android and mangle the inline query into a 404.
+export async function fetchJson(url) {
   const res = await CapacitorHttp.get({
     url,
-    params: params || undefined,
     headers: { 'User-Agent': API_UA, Accept: 'application/json, text/javascript, */*' },
     responseType: 'text',
   });
