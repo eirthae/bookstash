@@ -107,11 +107,13 @@ export function parseSearchResults(html) {
     const id = (a.getAttribute('href').match(/\/fiction\/(\d+)/) || [])[1];
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    const tags = [...item.querySelectorAll('.tags a.label, span.tags a, a.label')].map((e) => ({ t: clean(e.textContent), k: 'freeform' })).filter((x) => x.t);
+    const tags = [...item.querySelectorAll('a.fiction-tag, a.label[href*="tagsAdd"], span.tags a')].map((e) => ({ t: clean(e.textContent), k: 'freeform' })).filter((x) => x.t);
+    // RR's description block has used a couple of class shapes over time.
+    const summary = clean(text(item, 'div.fiction-description') || text(item, 'div.margin-top-10.col-xs-12') || text(item, 'div.description'));
     out.push({
       source: 'royalroad', sourceId: id, title: clean(a.textContent) || 'Untitled',
       author: clean(text(item, '.author span') || text(item, '.author a') || text(item, 'span.author')),
-      summary: clean(text(item, '.fiction-description') || text(item, '.description')),
+      summary,
       fandom: '', tags, status: 'ongoing', words: 0, language: 'English', url: workUrl(id),
     });
   }

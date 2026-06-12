@@ -62,8 +62,8 @@ const SEARCH = `
   <div class="fiction-list-item row">
     <h2 class="fiction-title"><a href="/fiction/999/mage-errant">Mage Errant</a></h2>
     <span class="author">by <span>author</span></span>
-    <div class="tags"><a class="label" href="/x">Fantasy</a><a class="label" href="/y">Magic</a></div>
-    <div class="fiction-description"><p>A weak mage learns.</p></div>
+    <span class="tags"><a class="fiction-tag" href="/fictions/search?tagsAdd=fantasy">Fantasy</a><a class="fiction-tag" href="/fictions/search?tagsAdd=magic">Magic</a></span>
+    <div class="margin-top-10 col-xs-12"><p>A weak mage learns.</p></div>
   </div>
 </div>`;
 test('parseSearchResults parses RR blurbs', () => {
@@ -72,5 +72,6 @@ test('parseSearchResults parses RR blurbs', () => {
   assert.equal(r[0].sourceId, '999');
   assert.equal(r[0].title, 'Mage Errant');
   assert.deepEqual(r[0].tags.map((t) => t.t), ['Fantasy', 'Magic']);
+  assert.equal(r[0].summary, 'A weak mage learns.'); // from div.margin-top-10.col-xs-12
   assert.equal(r[0].source, 'royalroad');
 });

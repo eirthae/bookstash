@@ -1,6 +1,17 @@
 import { useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { FilePicker } from '@capawesome/capacitor-file-picker';
 import Icon from './Icon.jsx';
 import { importFiles, importLink, summarize } from '../lib/import.js';
+
+// base64 → File. The native picker hands back file bytes as base64 (readData);
+// we rebuild a real File so the existing EPUB/HTML/TXT parsers work unchanged.
+function fileFromPicked(f) {
+  const bin = atob(f.data || '');
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], f.name || 'file', { type: f.mimeType || '' });
+}
 
 // Add to library — opened by the centered "+" in the bottom nav (like FicStash).
 // Upload files, or add a single work by link (fetched + extracted on-device).
@@ -11,9 +22,7 @@ export function AddMenu({ open, onClose, onChanged }) {
   const [url, setUrl] = useState('');
   const [state, setState] = useState({ kind: 'idle' }); // idle|busy|error|restricted|ok
 
-  const pick = () => { if (!busy && fileInput.current) fileInput.current.click(); };
-  const onFiles = async (e) => {
-    const files = e.target.files; e.target.value = '';
+  const runImport = async (files) => {
     if (!files || !files.length) return;
     setBusy({ done: 0, total: files.length });
     const results = await importFiles(files, setBusy);
@@ -21,6 +30,30 @@ export function AddMenu({ open, onClose, onChanged }) {
     const s = summarize(results);
     onChanged?.(`${s.added} added${s.failed ? ` · ${s.failed} skipped` : ''}`);
     onClose();
+  };
+
+  // On-device we use the native document picker (Storage Access Framework) — it
+  // opens the real file browser (Downloads, Files, SD card…), not the cramped
+  // Drive view, and reliably returns the bytes. The hidden <input> below is only
+  // a web/dev fallback (its change event is flaky in the Android WebView, which
+  // is why "pick a file → nothing happened" was happening on the phone).
+  const pick = async () => {
+    if (busy) return;
+    if (Capacitor.isNativePlatform()) {
+      let picked;
+      try {
+        const result = await FilePicker.pickFiles({ readData: true });
+        picked = (result && result.files) || [];
+      } catch (e) { return; } // user cancelled / picker error
+      if (!picked.length) return;
+      await runImport(picked.map(fileFromPicked));
+    } else if (fileInput.current) {
+      fileInput.current.click();
+    }
+  };
+  const onFiles = async (e) => {
+    const files = Array.from(e.target.files || []); e.target.value = '';
+    await runImport(files);
   };
   const submitLink = async () => {
     const u = url.trim();

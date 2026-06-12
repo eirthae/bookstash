@@ -15,6 +15,7 @@
   "dependencies": {
     "@capacitor/app": "^6.0.3",
     "@capacitor/preferences": "^6.0.4",
+    "@capawesome/capacitor-file-picker": "^6.2.0",
     "@iconify-json/solar": "^1.2.2",
     "@iconify/react": "^5.2.0",
     "@mozilla/readability": "^0.5.0",
