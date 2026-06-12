@@ -298,19 +298,20 @@ function TagPicker({ picked, onAdd, onRemove, placeholder, accent }) {
   const [term, setTerm] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [err, setErr] = useState(''); // why the live AO3 lookup failed (if it did)
   const debounce = useRef();
   const reqId = useRef(0); // monotonic id so a slow earlier search can't overwrite a newer one
 
   useEffect(() => {
     clearTimeout(debounce.current);
     const q = term.trim();
-    if (q.length < 2) { setResults([]); setSearching(false); return; }
+    if (q.length < 2) { setResults([]); setSearching(false); setErr(''); return; }
     const id = ++reqId.current; // this query's ticket
-    setSearching(true);
+    setSearching(true); setErr('');
     debounce.current = setTimeout(() => {
       autocompleteTags(q)
-        .then((r) => { if (id === reqId.current) setResults(r); })   // ignore stale resolutions
-        .catch(() => { if (id === reqId.current) setResults([]); })
+        .then((r) => { if (id === reqId.current) { setResults(r); setErr(''); } })   // ignore stale resolutions
+        .catch((e) => { if (id === reqId.current) { setResults([]); setErr((e && e.message) || 'AO3 unreachable'); } })
         .finally(() => { if (id === reqId.current) setSearching(false); });
     }, 280);
     return () => clearTimeout(debounce.current);
@@ -342,6 +343,11 @@ function TagPicker({ picked, onAdd, onRemove, placeholder, accent }) {
       <SearchField placeholder={placeholder} value={term} onChange={setTerm} onBlur={onBlur}
         onSubmit={() => { const t = term.trim(); if (t) add(results[0] || { name: t, id: '', kind: 'freeform' }); }} />
       {searching && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6, paddingLeft: 2 }}>Searching AO3…</div>}
+      {!searching && err && (
+        <div style={{ fontSize: 12, color: 'var(--danger, #f5455c)', marginTop: 6, paddingLeft: 2 }}>
+          Couldn’t reach AO3 ({err}) — you can still add the tag below.
+        </div>
+      )}
       {!searching && term.trim().length >= 2 && results.length === 0 && (
         <button className="pressable" onClick={() => add({ name: term.trim(), id: '', kind: 'freeform' })}
           style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', marginTop: 8, padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 12, background: 'transparent' }}>

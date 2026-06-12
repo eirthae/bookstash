@@ -6,6 +6,11 @@ import { CapacitorHttp } from '@capacitor/core';
 // back to fetch and will CORS-fail for cross-origin sites; that's expected — the
 // link features only work on-device.)
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
+// Honest identifier for AO3's lightweight JSON endpoints (autocomplete). A
+// desktop-"Chrome" UA that never runs JS gets challenged by Cloudflare on these
+// endpoints; a plain, honest client UA (exactly what FicStash's server proxy
+// sends) is treated as a known API client and let through.
+const API_UA = 'BookStash/1.0 (+https://github.com/eirthae/bookstash; personal reading app)';
 
 export async function fetchHtml(url) {
   const res = await CapacitorHttp.get({
@@ -36,7 +41,7 @@ export async function fetchJson(url, params) {
   const res = await CapacitorHttp.get({
     url,
     params: params || undefined,
-    headers: { 'User-Agent': UA, Accept: 'application/json, text/javascript, */*' },
+    headers: { 'User-Agent': API_UA, Accept: 'application/json, text/javascript, */*' },
     responseType: 'text',
   });
   let data = res && res.data;
