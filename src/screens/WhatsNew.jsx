@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Appbar } from '../components/chrome.jsx';
 import Icon from '../components/Icon.jsx';
-import { StatusBadge, fmtWords, useToast } from '../components/ui.jsx';
+import { StatusBadge, fmtWords, useToast, PullToRefresh } from '../components/ui.jsx';
 import { fetchNewMatches, fetchNewChapters, markChapterUpdateSeen, markMatchSeen, dismissMatch, requestSave } from '../lib/tags.js';
-import { kickSync } from '../lib/sync.js';
+import { kickSync, triggerSync } from '../lib/sync.js';
 
 // shared row: a new chapter on a followed work
 function ChapterUpdateRow({ u, onOpen }) {
@@ -75,6 +75,7 @@ function MatchUpdateRow({ u, onOpen, onDismiss, onSave, saveState = 'idle' }) {
 export function WhatsNewScreen({ chapters, matches, nav }) {
   const [tab, setTab] = useState('chapters');
   const [toast, showToast] = useToast();
+  const [bump, setBump] = useState(0); // re-fetch trigger (pull-to-refresh)
 
   // Live matches across all tracked groups; fall back to the passed sample data.
   const [liveMatches, setLiveMatches] = useState(null);
@@ -84,7 +85,7 @@ export function WhatsNewScreen({ chapters, matches, nav }) {
       .then((r) => { if (alive) setLiveMatches(r ?? matches); })
       .catch(() => { if (alive) setLiveMatches(matches); });
     return () => { alive = false; };
-  }, [matches]);
+  }, [matches, bump]);
   const matchList = liveMatches || matches;
 
   // Live new-chapter feed (real, downloaded chapters); fall back to sample.
@@ -95,8 +96,12 @@ export function WhatsNewScreen({ chapters, matches, nav }) {
       .then((r) => { if (alive) setLiveChapters(r ?? chapters); })
       .catch(() => { if (alive) setLiveChapters(chapters); });
     return () => { alive = false; };
-  }, [chapters]);
+  }, [chapters, bump]);
   const chapterList = liveChapters || chapters;
+
+  // Pull-to-refresh: run the on-device sync (follow-updates + tag discovery),
+  // then re-fetch the new-chapters / new-matches feeds.
+  const doSync = async () => { try { await triggerSync(); } finally { setBump((b) => b + 1); } };
 
   const openChapter = (u) => {
     markChapterUpdateSeen(u.id).catch(() => {});
@@ -148,7 +153,7 @@ export function WhatsNewScreen({ chapters, matches, nav }) {
           New matches <span className="pill">{matchList.length}</span>
         </button>
       </div>
-      <div className="scroll fade-enter" key={tab} style={{ padding: '0 20px 24px' }}>
+      <PullToRefresh className="scroll fade-enter" key={tab} onRefresh={doSync} style={{ padding: '0 20px 24px' }}>
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
           <Icon icon={tab === 'chapters' ? 'solar:download-minimalistic-linear' : 'solar:magnifer-linear'} size={14} />
           {tab === 'chapters' ? 'On works you follow — downloaded automatically.' : 'Matching tags you track — tap Save to download.'}
@@ -171,7 +176,7 @@ export function WhatsNewScreen({ chapters, matches, nav }) {
           </div>
         ))}
         {toast}
-      </div>
+      </PullToRefresh>
     </div>
   );
 }

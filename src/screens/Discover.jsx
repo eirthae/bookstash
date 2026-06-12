@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Appbar } from '../components/chrome.jsx';
 import Icon from '../components/Icon.jsx';
-import { SearchField, EmptyState, TAG_COLOR, useToast, Sheet, Segmented } from '../components/ui.jsx';
+import { SearchField, EmptyState, TAG_COLOR, useToast, Sheet, Segmented, PullToRefresh } from '../components/ui.jsx';
 import { TagTile, SuggestionCard } from '../components/cards.jsx';
 import {
   fetchTrackedGroups, createGroup, createLanguageGroup, deleteGroup,
   fetchMatches, dismissMatch, markGroupSeen, autocompleteTags, requestSave,
   markLater, unmarkLater, fetchLaterMatches,
 } from '../lib/tags.js';
-import { kickSync } from '../lib/sync.js';
+import { kickSync, triggerSync } from '../lib/sync.js';
 import { LANGUAGES } from '../lib/languages.js';
 import { fetchDiscoveryPrefs, updateDiscoveryPrefs } from '../lib/discovery.js';
 import { TRACKED_TAGS, SUGGESTIONS } from '../data/sample.js';
@@ -52,6 +52,10 @@ export function DiscoverScreen({ nav }) {
       .catch(() => setGroups(TRACKED_TAGS));
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  // Pull-to-refresh: run the on-device sync (tag discovery + follow-updates),
+  // then reload the tracked groups so new match counts show.
+  const doSync = useCallback(async () => { try { await triggerSync(); } finally { load(); } }, [load]);
 
   const all = groups || [];
   // Language groups get their own section; keep them out of the tag grid.
@@ -98,7 +102,7 @@ export function DiscoverScreen({ nav }) {
   return (
     <div className="screen">
       <Appbar large title="Discover" actions={[{ icon: 'solar:filter-bold', onClick: () => setFiltersOpen(true) }]} />
-      <div className="scroll" style={{ padding: '0 20px 24px' }}>
+      <PullToRefresh className="scroll" onRefresh={doSync} style={{ padding: '0 20px 24px' }}>
         <button className="set-group pressable" onClick={openLater}
           style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 13, width: '100%', textAlign: 'left', marginBottom: 18 }}>
           <div className="set-ic"><Icon icon="solar:bookmark-linear" size={18} /></div>
@@ -156,7 +160,7 @@ export function DiscoverScreen({ nav }) {
             </div>
           </>
         )}
-      </div>
+      </PullToRefresh>
 
       <TagGroupBuilder open={builderOpen} onClose={() => setBuilderOpen(false)} onCreated={onCreated}
         initialSource={{ ao3: 'ao3', sites: 'royalroad', books: 'books' }[tagShelf] || 'ao3'} />
