@@ -5,10 +5,9 @@ import { StatusBadge, fmtWords, useToast, PullToRefresh } from '../components/ui
 import { fetchNewChapters, markChapterUpdateSeen } from '../lib/tags.js';
 import { fetchSavedWorks } from '../lib/library.js';
 import { triggerSync } from '../lib/sync.js';
+import { savedTypeOf } from '../lib/shelving.js';
 
 const SAVED_TYPES = [{ id: 'all', label: 'All' }, { id: 'ao3', label: 'AO3' }, { id: 'stories', label: 'Stories' }, { id: 'books', label: 'Books' }];
-const savedTypeOf = (w) => (w.origin === 'upload' || w.source === 'upload' || w.source === 'books')
-  ? 'books' : w.source === 'ao3' ? 'ao3' : 'stories';
 
 // shared row: a new chapter on a followed work
 function ChapterUpdateRow({ u, onOpen }) {

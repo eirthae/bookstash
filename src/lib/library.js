@@ -1,5 +1,6 @@
 import { getAllWorks, deleteWork, getChapters, updateWork } from './db.js';
 import { getReadingPos } from './reading.js';
+import { seriesWorksFrom, savedWorksFrom } from './shelving.js';
 
 // Map an on-device work record (db.js shape) to the exact shape FicStash's UI
 // expects, so BookStash can reuse FicStash's screens/cards/grouping verbatim.
@@ -97,10 +98,7 @@ export async function fetchWorks() {
 export async function fetchSeriesWorks(ao3SeriesId) {
   if (!ao3SeriesId) return [];
   const rows = await getAllWorks();
-  return (rows || [])
-    .filter((r) => (r.ao3SeriesId || '') === String(ao3SeriesId))
-    .map(mapWork)
-    .sort((a, b) => (a.ao3SeriesIndex ?? 1e9) - (b.ao3SeriesIndex ?? 1e9) || (a.title || '').localeCompare(b.title || ''));
+  return seriesWorksFrom((rows || []).map(mapWork), ao3SeriesId);
 }
 
 // Day bucket for the What's New feeds (Today / Yesterday / This week + "Xh ago").
@@ -119,10 +117,7 @@ function dayBucketLocal(iso) {
 // The "Saved" feed in What's New — your picks, fetched — not the raw match feed.
 export async function fetchSavedWorks() {
   const rows = await getAllWorks();
-  return (rows || [])
-    .filter((r) => (r.origin || '') === 'tag')
-    .map(mapWork)
-    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+  return savedWorksFrom((rows || []).map(mapWork))
     .map((w) => { const { day, time } = dayBucketLocal(w.createdAt); return { ...w, day, time, fresh: true }; });
 }
 

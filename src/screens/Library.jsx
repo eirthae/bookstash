@@ -7,30 +7,11 @@ import { triggerSync } from '../lib/sync.js';
 import { fetchPendingLinks, removeRequest } from '../lib/links.js';
 import { removeWork } from '../lib/library.js';
 import { getLastRead } from '../lib/reading.js';
+import { fandomName, workTagSet, shelfOf, sortWorks, orderGroups, groupFics, filterWorks } from '../lib/shelving.js';
 
-// The fandom name without the author suffix ("Heated Rivalry – Rachel Reid" → "Heated Rivalry").
-function fandomName(work) {
-  return (work.fandom || 'Other').split('–')[0].split(' - ')[0].trim() || 'Other';
-}
-
-// Lowercased tag texts of a work (tags are [{ t, k }]), for search + filtering.
-function workTagSet(work) {
-  return (Array.isArray(work.tags) ? work.tags : [])
-    .map(t => (typeof t === 'string' ? t : (t && (t.t || t.name)) || '').toLowerCase())
-    .filter(Boolean);
-}
-
-// Which shelf a work belongs to. Routing is automatic by how it entered the
-// library: uploaded EPUBs are Books; AO3 works (bookmarks, tag saves, AO3 links)
-// are Fics; everything else added from another site is a Story.
-export function shelfOf(work) {
-  if (!work) return 'fics';
-  // Uploaded EPUB/HTML/TXT → Books. The on-device importer stores these with
-  // source:'upload' (older data used origin:'upload') — accept either.
-  if ((work.origin || '') === 'upload' || work.source === 'upload') return 'books';
-  if (work.source === 'ao3') return 'fics';
-  return 'stories';
-}
+// shelfOf lives in lib/shelving.js (testable) — re-export so App.jsx and others
+// can keep importing it from the Library screen.
+export { shelfOf };
 
 const SHELVES = [
   { id: 'fics', label: 'Fics' },
@@ -49,15 +30,6 @@ const SORT_OPTS = {
   title: { icon: 'solar:sort-from-top-to-bottom-linear', label: 'A–Z' },
 };
 
-// Sort a list without mutating it. Timestamps are ISO strings (sortable as text).
-function sortWorks(list, sort, lastRead = {}) {
-  const arr = [...list];
-  if (sort === 'added') arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  else if (sort === 'updated') arr.sort((a, b) => (b.sourceUpdated || '').localeCompare(a.sourceUpdated || ''));
-  else if (sort === 'title') arr.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-  else if (sort === 'read') arr.sort((a, b) => (lastRead[b.id] || '').localeCompare(lastRead[a.id] || ''));
-  return arr;
-}
 
 // Sort control — a compact icon button that opens a dropdown of options
 // (icon + label), instead of laying every option out in a row.
@@ -450,61 +422,6 @@ function groupBooks(works, sort = 'added', lastRead = {}) {
   }
   if (standalone.items.length) real.push(standalone); // always underneath the named groups
   return real;
-}
-
-// Group AO3 fics BY FANDOM, with multi-work series collapsed into one clickable
-// series card inside their fandom. Each section = { name, series:[{seriesId,
-// name, items}], loose:[works], items:[all] }. A series is filed under the
-// fandom of its first work; a single-work series stays a normal card.
-function groupFics(works, sort = 'default', lastRead = {}) {
-  const seriesByKey = new Map();
-  const looseAll = [];
-  for (const w of works) {
-    const sid = (w.ao3SeriesId || '').trim();
-    const sname = (w.ao3SeriesName || '').trim();
-    if (!sid || !sname) { looseAll.push(w); continue; }
-    let s = seriesByKey.get(sid);
-    if (!s) { s = { seriesId: sid, name: sname, items: [] }; seriesByKey.set(sid, s); }
-    s.items.push(w);
-  }
-  const byFandom = new Map();
-  const ensure = (name) => {
-    let g = byFandom.get(name);
-    if (!g) { g = { name, series: [], loose: [], items: [] }; byFandom.set(name, g); }
-    return g;
-  };
-  for (const w of looseAll) { const g = ensure(fandomName(w)); g.loose.push(w); g.items.push(w); }
-  for (const s of seriesByKey.values()) {
-    s.items.sort((a, b) => (a.ao3SeriesIndex ?? 1e9) - (b.ao3SeriesIndex ?? 1e9) || (a.title || '').localeCompare(b.title || ''));
-    if (s.items.length < 2) { const w = s.items[0]; const g = ensure(fandomName(w)); g.loose.push(w); g.items.push(w); continue; }
-    const g = ensure(fandomName(s.items[0]));
-    g.series.push(s); g.items.push(...s.items);
-  }
-  const groups = [...byFandom.values()];
-  for (const g of groups) {
-    g.loose = sortWorks(g.loose, sort, lastRead);
-    g.series.sort((a, b) => a.name.localeCompare(b.name));
-  }
-  orderGroups(groups, sort, lastRead);
-  return groups;
-}
-
-// Order section groups by the active sort (shared by fandom + fics-series
-// sections): A–Z by name, Default by size, otherwise by the group's most-recent
-// item (added / updated / read).
-function orderGroups(groups, sort, lastRead = {}) {
-  if (sort === 'title') {
-    groups.sort((a, b) => a.name.localeCompare(b.name));
-  } else if (sort === 'default') {
-    groups.sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));
-  } else {
-    const recency = (g) => g.items.reduce((m, x) => {
-      const v = sort === 'read' ? (lastRead[x.id] || '') : sort === 'updated' ? (x.sourceUpdated || '') : (x.createdAt || '');
-      return v > m ? v : m;
-    }, '');
-    groups.sort((a, b) => recency(b).localeCompare(recency(a)));
-  }
-  return groups;
 }
 
 // Books grouped into their series/author sections (see groupBooks).

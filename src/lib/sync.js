@@ -5,6 +5,7 @@ import { fetchDiscoveryPrefs } from './discovery.js';
 import { fetchUpdates as rrFetchUpdates, searchTags as rrSearchTags } from './sources/royalroad.js';
 import { fetchUpdates as shFetchUpdates, searchTags as shSearchTags } from './sources/scribblehub.js';
 import { discoverBooks } from './goodreads.js';
+import { statusMatches } from './shelving.js';
 
 // On-device sync engine. This is the job FicStash's server worker does, run on
 // the phone instead: re-check every followed (ongoing) work for new chapters and
@@ -109,7 +110,7 @@ export async function triggerSync({ onProgress } = {}) {
     // Completion-status filter on the group: 'ongoing' / 'complete' / 'all'.
     const gStatus = (g.status || 'all');
     if (gStatus === 'ongoing' || gStatus === 'complete') {
-      metas = metas.filter((m) => (((m.status || '').toLowerCase() === 'complete') === (gStatus === 'complete')));
+      metas = metas.filter((m) => statusMatches(m, gStatus));
     }
     metas = metas.filter((m) => passesPrefs(m, !!langGroup));
     try {
