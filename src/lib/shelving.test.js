@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   fandomName, workTagSet, shelfOf, sortWorks, orderGroups, groupFics,
   filterWorks, savedTypeOf, statusMatches, seriesWorksFrom, savedWorksFrom,
+  passesGlobalPrefs,
 } from './shelving.js';
 
 // ---- fandomName -----------------------------------------------------------
@@ -99,6 +100,32 @@ test('savedTypeOf buckets by source/origin', () => {
   assert.equal(savedTypeOf({ source: 'scribblehub' }), 'stories');
   assert.equal(savedTypeOf({ source: 'upload' }), 'books');
   assert.equal(savedTypeOf({ origin: 'upload', source: 'ao3' }), 'books');
+});
+
+// ---- passesGlobalPrefs (global exclude / language filter) -----------------
+test('passesGlobalPrefs drops works carrying a globally-excluded tag', () => {
+  const excludedTags = [{ name: 'Omegaverse' }, { name: 'Character Death' }];
+  const clean = { tags: [{ t: 'Fluff', k: 'freeform' }, { t: 'Modern AU', k: 'freeform' }] };
+  const dirty = { tags: [{ t: 'Fluff', k: 'freeform' }, { t: 'Omegaverse', k: 'freeform' }] };
+  assert.equal(passesGlobalPrefs(clean, { excludedTags }), true);
+  assert.equal(passesGlobalPrefs(dirty, { excludedTags }), false); // excluded tag → dropped
+});
+
+test('passesGlobalPrefs exclude is case-insensitive and shape-agnostic', () => {
+  const excludedTags = ['omegaverse']; // plain string pref
+  assert.equal(passesGlobalPrefs({ tags: [{ t: 'OMEGAVERSE' }] }, { excludedTags }), false);
+  assert.equal(passesGlobalPrefs({ tags: [{ name: 'Omegaverse' }] }, { excludedTags }), false);
+  assert.equal(passesGlobalPrefs({ tags: [] }, { excludedTags }), true);
+  assert.equal(passesGlobalPrefs({ tags: [{ t: 'Fluff' }] }, {}), true); // no prefs → keep
+});
+
+test('passesGlobalPrefs language allowlist applies to tag groups only', () => {
+  const languages = [{ native: 'English', english: 'English' }];
+  const en = { language: 'English', tags: [] };
+  const es = { language: 'Español', tags: [] };
+  assert.equal(passesGlobalPrefs(en, { languages }, false), true);
+  assert.equal(passesGlobalPrefs(es, { languages }, false), false); // wrong language → dropped
+  assert.equal(passesGlobalPrefs(es, { languages }, true), true);   // language group → not filtered
 });
 
 // ---- statusMatches --------------------------------------------------------

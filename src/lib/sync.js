@@ -5,7 +5,7 @@ import { fetchDiscoveryPrefs } from './discovery.js';
 import { fetchUpdates as rrFetchUpdates, searchTags as rrSearchTags } from './sources/royalroad.js';
 import { fetchUpdates as shFetchUpdates, searchTags as shSearchTags } from './sources/scribblehub.js';
 import { discoverBooks } from './goodreads.js';
-import { statusMatches } from './shelving.js';
+import { statusMatches, passesGlobalPrefs } from './shelving.js';
 
 // On-device sync engine. This is the job FicStash's server worker does, run on
 // the phone instead: re-check every followed (ongoing) work for new chapters and
@@ -63,14 +63,7 @@ export async function triggerSync({ onProgress } = {}) {
   // Global discovery prefs (preferred languages / excluded tags) filter matches.
   let prefs = { languages: [], excludedTags: [] };
   try { prefs = await fetchDiscoveryPrefs(); } catch (e) { /* defaults */ }
-  const exclSet = new Set((prefs.excludedTags || []).map((t) => (t.name || t).toLowerCase()));
-  const langSet = new Set((prefs.languages || []).flatMap((l) => [l.native, l.english].filter(Boolean).map((s) => s.toLowerCase())));
-  const passesPrefs = (m, isLanguageGroup) => {
-    if (exclSet.size && (m.tags || []).some((t) => exclSet.has((t.t || '').toLowerCase()))) return false;
-    // Language allowlist applies to tag groups only (a language group IS its language).
-    if (!isLanguageGroup && langSet.size && m.language && !langSet.has(m.language.toLowerCase())) return false;
-    return true;
-  };
+  const passesPrefs = (m, isLanguageGroup) => passesGlobalPrefs(m, prefs, isLanguageGroup);
 
   let newMatches = 0;
   let groups = [];

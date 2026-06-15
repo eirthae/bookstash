@@ -115,6 +115,19 @@ export function savedTypeOf(w) {
     ? 'books' : w.source === 'ao3' ? 'ao3' : 'stories';
 }
 
+// Global discovery filter predicate: drop a match if it carries a globally
+// excluded tag, or (for non-language groups) if a preferred-language allowlist is
+// set and the match isn't in one. Excluded tags compare by name; match tags are
+// {t,k} (or {name}/string). Returns true = keep.
+export function passesGlobalPrefs(work, { excludedTags = [], languages = [] } = {}, isLanguageGroup = false) {
+  const norm = (t) => ((t && (t.name ?? t.t)) ?? t ?? '').toString().toLowerCase();
+  const exclSet = new Set((excludedTags || []).map(norm).filter(Boolean));
+  const langSet = new Set((languages || []).flatMap((l) => [l && l.native, l && l.english].filter(Boolean).map((s) => s.toLowerCase())));
+  if (exclSet.size && (work.tags || []).some((t) => exclSet.has(norm(t)))) return false;
+  if (!isLanguageGroup && langSet.size && work.language && !langSet.has(work.language.toLowerCase())) return false;
+  return true;
+}
+
 // Discovery completion-status predicate. status 'all' matches everything;
 // 'complete'/'ongoing' match the work's own completion.
 export function statusMatches(work, status) {
