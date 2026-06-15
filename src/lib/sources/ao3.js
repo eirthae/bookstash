@@ -1,4 +1,5 @@
-import { fetchHtml, fetchJson } from '../fetch.js';
+import { fetchHtml, fetchJson, fetchJsonViaFetch } from '../fetch.js';
+import { autocompleteViaProxy } from '../supabase.js';
 
 // On-device AO3 source — the JS port of FicStash's worker ao3.py. Fetches a work
 // from AO3's PUBLIC pages on the phone (native HTTP, no login) and parses clean
@@ -267,6 +268,15 @@ const namesFrom = (arr) => arr
 export async function autocompleteTag(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return [];
+  // Preferred path: the Supabase tag-autocomplete proxy (if a project is
+  // configured at build time). It fetches AO3 server-side and returns clean JSON,
+  // sidestepping CapacitorHttp's on-device URL mangling entirely. Falls through to
+  // the on-device attempts below when unconfigured or if it fails.
+  try {
+    const viaProxy = await autocompleteViaProxy(q);
+    if (Array.isArray(viaProxy)) return viaProxy;
+  } catch (e) { /* fall through to on-device */ }
+
   // AO3 returns [{ id, name }, …] JSON at /autocomplete/tag?term=…
   // CapacitorHttp's URL handling has bitten us both ways on-device (inline "?"
   // gets %3F-encoded → /404; `params` reportedly failed too), and the native

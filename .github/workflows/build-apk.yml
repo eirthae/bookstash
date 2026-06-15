@@ -33,11 +33,14 @@ jobs:
         run: npm test
 
       - name: Build web bundle
-        # Stamp the build with the tag (or "dev" for manual runs) so the app can
-        # show which version is actually installed — kills "am I testing the
-        # right APK?" confusion when several builds are floating around.
+        # VITE_APP_VERSION stamps the build with the tag (shown in Settings).
+        # VITE_SUPABASE_* (optional) point ONLY the AO3 tag-autocomplete at the
+        # user's Supabase edge function — everything else stays on-device. Unset
+        # → autocomplete uses the best-effort on-device path.
         env:
           VITE_APP_VERSION: ${{ github.ref_name }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: npm run build
 
       - name: Set up Java
