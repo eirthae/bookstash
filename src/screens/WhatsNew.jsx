@@ -3,7 +3,7 @@ import { Appbar } from '../components/chrome.jsx';
 import Icon from '../components/Icon.jsx';
 import { StatusBadge, fmtWords, useToast, PullToRefresh } from '../components/ui.jsx';
 import { fetchNewChapters, markChapterUpdateSeen } from '../lib/tags.js';
-import { fetchSavedWorks } from '../lib/library.js';
+import { fetchSavedWorks, removeWork } from '../lib/library.js';
 import { triggerSync } from '../lib/sync.js';
 import { savedTypeOf } from '../lib/shelving.js';
 
@@ -40,7 +40,7 @@ function ChapterUpdateRow({ u, onOpen }) {
 
 // shared row: a work you SAVED from Discovery, now downloaded and ready.
 const SAVED_TYPE_LABEL = { ao3: 'AO3', stories: 'Story', books: 'Book' };
-function SavedWorkRow({ w, onOpen }) {
+function SavedWorkRow({ w, onOpen, onRemove }) {
   const fandom = (w.fandom || '').split('–')[0].split(' - ')[0].trim();
   const type = savedTypeOf(w);
   return (
@@ -51,6 +51,10 @@ function SavedWorkRow({ w, onOpen }) {
           <span className="chip" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', height: 20 }}>
             <Icon icon="solar:bookmark-bold" size={12} /> {SAVED_TYPE_LABEL[type] || 'Saved'}</span>
           <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{w.time}</span>
+          <button className="iconbtn" style={{ width: 24, height: 24 }} aria-label="Remove from library"
+            onClick={(e) => { e.stopPropagation(); onRemove(w); }}>
+            <Icon icon="solar:close-circle-linear" size={17} color="var(--text-tertiary)" />
+          </button>
         </div>
         <div className="story-title" style={{ fontSize: 14.5 }}>{w.customTitle || w.title}</div>
         <div className="story-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>by {w.author}</div>
@@ -70,7 +74,7 @@ function SavedWorkRow({ w, onOpen }) {
 export function WhatsNewScreen({ chapters, nav }) {
   const [tab, setTab] = useState('chapters');
   const [typeFilter, setTypeFilter] = useState('all'); // all | ao3 | stories | books
-  const [toast] = useToast();
+  const [toast, showToast] = useToast();
   const [bump, setBump] = useState(0); // re-fetch trigger (pull-to-refresh)
 
   // Live new-chapter feed (real, downloaded chapters); fall back to sample.
@@ -103,6 +107,11 @@ export function WhatsNewScreen({ chapters, nav }) {
     nav.push('reader', { work: u.work, workId: u.workId, chapterN: u.chapterN, chapterTitle: u.chapter });
   };
   const openSaved = (w) => nav.push('reader', { work: w });
+  const removeSaved = async (w) => {
+    setSavedWorks((arr) => (arr || []).filter((x) => x.id !== w.id)); // optimistic
+    try { await removeWork(w.id); showToast('Removed from library', 'solar:trash-bin-trash-bold'); }
+    catch { setBump((b) => b + 1); showToast("Couldn't remove — try again", 'solar:danger-triangle-linear'); }
+  };
 
   const typeCount = (id) => id === 'all' ? savedList.length : savedList.filter((w) => savedTypeOf(w) === id).length;
   const filteredSaved = typeFilter === 'all' ? savedList : savedList.filter((w) => savedTypeOf(w) === typeFilter);
@@ -154,7 +163,7 @@ export function WhatsNewScreen({ chapters, nav }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
               {g.items.map(u => tab === 'chapters'
                 ? <ChapterUpdateRow key={u.id} u={u} onOpen={openChapter} />
-                : <SavedWorkRow key={u.id} w={u} onOpen={openSaved} />)}
+                : <SavedWorkRow key={u.id} w={u} onOpen={openSaved} onRemove={removeSaved} />)}
             </div>
           </div>
         ))}
