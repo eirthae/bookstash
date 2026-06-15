@@ -76,9 +76,10 @@ export async function postJson(url, headers, body) {
     url,
     headers: { 'Content-Type': 'application/json', ...(headers || {}) },
     data: body,
-    responseType: 'json',
+    responseType: 'text',
   });
   let data = res && res.data;
+  const raw = typeof data === 'string' ? data : '';
   if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { data = null; } }
-  return { status: res ? res.status : 0, data };
+  return { status: res ? res.status : 0, data, raw };
 }

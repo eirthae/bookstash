@@ -272,10 +272,12 @@ export async function autocompleteTag(term) {
   // configured at build time). It fetches AO3 server-side and returns clean JSON,
   // sidestepping CapacitorHttp's on-device URL mangling entirely. Falls through to
   // the on-device attempts below when unconfigured or if it fails.
+  let proxyDiag = '';
   try {
     const viaProxy = await autocompleteViaProxy(q);
     if (Array.isArray(viaProxy)) return viaProxy;
-  } catch (e) { /* fall through to on-device */ }
+    proxyDiag = 'proxy:not-configured'; // null = no Supabase env baked in
+  } catch (e) { proxyDiag = `proxy:${(e && e.message) || e}`; }
 
   // AO3 returns [{ id, name }, …] JSON at /autocomplete/tag?term=…
   // CapacitorHttp's URL handling has bitten us both ways on-device (inline "?"
@@ -299,7 +301,7 @@ export async function autocompleteTag(term) {
       : `${r.status}`;
     diag.push(`${a.how}:${tail}@${(r && r.url) || '?'}`);
   }
-  throw new Error(diag.join(' | '));
+  throw new Error([proxyDiag, ...diag].filter(Boolean).join(' | '));
 }
 
 // ---- small DOM helpers -----------------------------------------------------

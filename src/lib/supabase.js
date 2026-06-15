@@ -20,19 +20,21 @@ export const hasTagProxy = !!(SUPA_URL && SUPA_KEY);
 // (so the caller can fall back). The term goes in the POST body — no query string
 // for CapacitorHttp to break.
 export async function autocompleteViaProxy(term) {
-  if (!hasTagProxy) return null;
+  if (!hasTagProxy) return null; // not configured at build → caller uses on-device
   const q = String(term || '').trim();
   if (q.length < 2) return [];
-  try {
-    const r = await postJson(
-      `${SUPA_URL}/functions/v1/tag-autocomplete`,
-      { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
-      { term: q },
-    );
-    if (!r || r.status < 200 || r.status >= 300 || !r.data) return null;
-    const tags = Array.isArray(r.data.tags) ? r.data.tags : [];
-    return tags.map((t) => (t && (t.name || t.id)) || '').filter(Boolean);
-  } catch (e) {
-    return null;
+  // On failure, THROW with a short reason so the picker's error line shows what
+  // the proxy did (e.g. "proxy 401", "proxy 404"), instead of silently falling
+  // back and looking like the proxy was never configured.
+  const r = await postJson(
+    `${SUPA_URL}/functions/v1/tag-autocomplete`,
+    { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+    { term: q },
+  );
+  if (!r || r.status < 200 || r.status >= 300) {
+    throw new Error(`proxy ${r ? r.status : '?'} ${(r && r.raw ? r.raw : '').replace(/\s+/g, ' ').slice(0, 40)}`);
   }
+  const tags = r.data && Array.isArray(r.data.tags) ? r.data.tags : null;
+  if (!tags) throw new Error(`proxy non-JSON ${(r.raw || '').replace(/\s+/g, ' ').slice(0, 40)}`);
+  return tags.map((t) => (t && (t.name || t.id)) || '').filter(Boolean);
 }
