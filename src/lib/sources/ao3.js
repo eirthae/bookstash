@@ -1,5 +1,4 @@
-import { fetchHtml, fetchJson, fetchJsonViaFetch } from '../fetch.js';
-import { autocompleteViaProxy } from '../supabase.js';
+import { fetchHtml } from '../fetch.js';
 
 // On-device AO3 source — the JS port of FicStash's worker ao3.py. Fetches a work
 // from AO3's PUBLIC pages on the phone (native HTTP, no login) and parses clean
@@ -268,40 +267,22 @@ const namesFrom = (arr) => arr
 export async function autocompleteTag(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return [];
-  // Preferred path: the Supabase tag-autocomplete proxy (if a project is
-  // configured at build time). It fetches AO3 server-side and returns clean JSON,
-  // sidestepping CapacitorHttp's on-device URL mangling entirely. Falls through to
-  // the on-device attempts below when unconfigured or if it fails.
-  let proxyDiag = '';
-  try {
-    const viaProxy = await autocompleteViaProxy(q);
-    if (Array.isArray(viaProxy)) return viaProxy;
-    proxyDiag = 'proxy:not-configured'; // null = no Supabase env baked in
-  } catch (e) { proxyDiag = `proxy:${(e && e.message) || e}`; }
-
-  // AO3 returns [{ id, name }, …] JSON at /autocomplete/tag?term=…
-  // CapacitorHttp's URL handling has bitten us both ways on-device (inline "?"
-  // gets %3F-encoded → /404; `params` reportedly failed too), and the native
-  // source says BOTH should work — so rather than guess, try every transport
-  // and use whichever actually returns the array. If all fail, throw with each
-  // attempt's status + final URL so the picker shows exactly what happened.
-  const base = `https://${AO3_HOST}/autocomplete/tag`;
-  const attempts = [
-    { how: 'params', run: () => fetchJson(base, { term: q }) },
-    { how: 'inline', run: () => fetchJson(`${base}?term=${encodeURIComponent(q)}`) },
-    { how: 'fetch', run: () => fetchJsonViaFetch(`${base}?term=${encodeURIComponent(q)}`) },
-  ];
-  const diag = [];
-  for (const a of attempts) {
-    let r;
-    try { r = await a.run(); } catch (e) { diag.push(`${a.how}:err ${(e && e.message) || e}`); continue; }
-    if (r && r.status >= 200 && r.status < 300 && Array.isArray(r.data)) return namesFrom(r.data);
-    const tail = !r ? 'no-response'
-      : !Array.isArray(r.data) ? `${r.status} non-JSON ${(r.raw || '').replace(/\s+/g, ' ').slice(0, 30)}`
-      : `${r.status}`;
-    diag.push(`${a.how}:${tail}@${(r && r.url) || '?'}`);
+  // AO3 returns a JSON array [{ id, name }, …] at /autocomplete/tag?term=…
+  // Fetch it through the SAME native transport that already reaches AO3 for work
+  // pages and tag search on-device (fetchHtml → CapacitorHttp.get with an inline
+  // query string — proven to work), then parse the JSON ourselves. Fully
+  // on-device, no backend/proxy required.
+  const url = `https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`;
+  const r = await fetchHtml(url);
+  if (!r || r.status < 200 || r.status >= 300) {
+    throw new Error(`AO3 ${r ? r.status : '?'} @ ${(r && r.url) || url}`);
   }
-  throw new Error([proxyDiag, ...diag].filter(Boolean).join(' | '));
+  let arr;
+  try { arr = JSON.parse(r.html); } catch (e) { arr = null; }
+  if (!Array.isArray(arr)) {
+    throw new Error(`AO3 non-JSON @ ${r.url || url}: ${(r.html || '').replace(/\s+/g, ' ').slice(0, 40)}`);
+  }
+  return namesFrom(arr);
 }
 
 // ---- small DOM helpers -----------------------------------------------------
