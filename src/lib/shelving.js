@@ -128,6 +128,23 @@ export function passesGlobalPrefs(work, { excludedTags = [], languages = [] } = 
   return true;
 }
 
+// Which Discovery shelf a tracked group's source belongs to. Discovery filters
+// are scoped per shelf: AO3 → 'ao3', Royal Road / Scribble Hub → 'sites'
+// (Stories), Books → 'books'.
+export function discoveryShelfForSource(source) {
+  return source === 'books' ? 'books' : source === 'ao3' ? 'ao3' : 'sites';
+}
+
+// The globally-excluded tags for one Discovery shelf. Accepts the per-shelf
+// object ({ao3,sites,books}) and the legacy flat array (treated as AO3-only,
+// since the old single global filter only applied to AO3 discovery).
+export function excludedForShelf(prefs, shelf) {
+  const e = prefs && prefs.excludedTags;
+  if (Array.isArray(e)) return shelf === 'ao3' ? e : [];
+  if (e && typeof e === 'object') return Array.isArray(e[shelf]) ? e[shelf] : [];
+  return [];
+}
+
 // Discovery completion-status predicate. status 'all' matches everything;
 // 'complete'/'ongoing' match the work's own completion.
 export function statusMatches(work, status) {

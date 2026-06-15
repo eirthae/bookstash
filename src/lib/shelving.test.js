@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   fandomName, workTagSet, shelfOf, sortWorks, orderGroups, groupFics,
   filterWorks, savedTypeOf, statusMatches, seriesWorksFrom, savedWorksFrom,
-  passesGlobalPrefs,
+  passesGlobalPrefs, discoveryShelfForSource, excludedForShelf,
 } from './shelving.js';
 
 // ---- fandomName -----------------------------------------------------------
@@ -126,6 +126,35 @@ test('passesGlobalPrefs language allowlist applies to tag groups only', () => {
   assert.equal(passesGlobalPrefs(en, { languages }, false), true);
   assert.equal(passesGlobalPrefs(es, { languages }, false), false); // wrong language → dropped
   assert.equal(passesGlobalPrefs(es, { languages }, true), true);   // language group → not filtered
+});
+
+// ---- per-shelf discovery excludes ----------------------------------------
+test('discoveryShelfForSource maps a group source to its Discovery shelf', () => {
+  assert.equal(discoveryShelfForSource('ao3'), 'ao3');
+  assert.equal(discoveryShelfForSource('royalroad'), 'sites');
+  assert.equal(discoveryShelfForSource('scribblehub'), 'sites');
+  assert.equal(discoveryShelfForSource('books'), 'books');
+});
+
+test('excludedForShelf reads the per-shelf object', () => {
+  const prefs = { excludedTags: { ao3: [{ name: 'Explicit' }], sites: [{ name: 'litrpg' }], books: [] } };
+  assert.deepEqual(excludedForShelf(prefs, 'ao3'), [{ name: 'Explicit' }]);
+  assert.deepEqual(excludedForShelf(prefs, 'sites'), [{ name: 'litrpg' }]);
+  assert.deepEqual(excludedForShelf(prefs, 'books'), []);
+});
+
+test('excludedForShelf treats a legacy flat array as AO3-only', () => {
+  const prefs = { excludedTags: [{ name: 'Explicit' }] };
+  assert.deepEqual(excludedForShelf(prefs, 'ao3'), [{ name: 'Explicit' }]);
+  assert.deepEqual(excludedForShelf(prefs, 'sites'), []);
+  assert.deepEqual(excludedForShelf(prefs, 'books'), []);
+});
+
+test('per-shelf exclude: litrpg hidden on Stories, kept on AO3', () => {
+  const prefs = { excludedTags: { ao3: [], sites: [{ name: 'litrpg' }], books: [] } };
+  const work = { tags: [{ name: 'litrpg' }] };
+  assert.equal(passesGlobalPrefs(work, { excludedTags: excludedForShelf(prefs, 'sites') }), false);
+  assert.equal(passesGlobalPrefs(work, { excludedTags: excludedForShelf(prefs, 'ao3') }), true);
 });
 
 // ---- statusMatches --------------------------------------------------------

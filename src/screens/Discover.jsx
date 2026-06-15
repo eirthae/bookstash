@@ -170,7 +170,7 @@ export function DiscoverScreen({ nav }) {
         initialSource={{ ao3: 'ao3', sites: 'royalroad', books: 'books' }[tagShelf] || 'ao3'} />
       <AddLanguageSheet open={addLangOpen} onClose={() => setAddLangOpen(false)}
         followedCodes={followedLangCodes} onPick={followLanguage} />
-      <DiscoveryFiltersSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} showToast={showToast} />
+      <DiscoveryFiltersSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} showToast={showToast} shelf={tagShelf} />
       {toast}
     </div>
   );
@@ -209,31 +209,37 @@ function AddLanguageSheet({ open, onClose, followedCodes, onPick }) {
 // ---- Global discovery filters --------------------------------------------
 // Preferred languages (empty = all) + globally-excluded tags. Applied by the
 // worker to every tag-discovery search.
-function DiscoveryFiltersSheet({ open, onClose, showToast }) {
+const SHELF_LABEL = { ao3: 'AO3', sites: 'Stories', books: 'Books' };
+
+function DiscoveryFiltersSheet({ open, onClose, showToast, shelf = 'ao3' }) {
   const [langs, setLangs] = useState([]);       // [{code,native,english}]
-  const [excluded, setExcluded] = useState([]); // [{name,id,kind}]
+  const [excludedObj, setExcludedObj] = useState({ ao3: [], sites: [], books: [] }); // per-shelf {name,id,kind}
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [langPick, setLangPick] = useState(false);
+  const excluded = excludedObj[shelf] || []; // the active shelf's exclude list
 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
     fetchDiscoveryPrefs()
-      .then((p) => { setLangs(p.languages || []); setExcluded(p.excludedTags || []); })
+      .then((p) => { setLangs(p.languages || []); setExcludedObj(p.excludedTags || { ao3: [], sites: [], books: [] }); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [open]);
 
   const removeLang = (code) => setLangs((ls) => ls.filter((l) => l.code !== code));
   const addLang = (l) => { setLangs((ls) => (ls.some((x) => x.code === l.code) ? ls : [...ls, l])); setLangPick(false); };
-  const addExcluded = (t) => setExcluded((p) => (p.some((x) => x.name === t.name) ? p : [...p, t]));
-  const removeExcluded = (name) => setExcluded((p) => p.filter((x) => x.name !== name));
+  const addExcluded = (t) => setExcludedObj((o) => {
+    const cur = o[shelf] || [];
+    return cur.some((x) => x.name === t.name) ? o : { ...o, [shelf]: [...cur, t] };
+  });
+  const removeExcluded = (name) => setExcludedObj((o) => ({ ...o, [shelf]: (o[shelf] || []).filter((x) => x.name !== name) }));
 
   const save = async () => {
     setSaving(true);
     try {
-      await updateDiscoveryPrefs({ languages: langs, excludedTags: excluded });
+      await updateDiscoveryPrefs({ languages: langs, excludedTags: excludedObj });
       showToast('Discovery filters saved');
       onClose();
     } catch {
@@ -244,11 +250,12 @@ function DiscoveryFiltersSheet({ open, onClose, showToast }) {
   const pickable = LANGUAGES.filter((l) => !langs.some((x) => x.code === l.code));
 
   return (
-    <Sheet open={open} onClose={onClose} title="Discovery filters" maxH="86%">
+    <Sheet open={open} onClose={onClose} title={`Discovery filters · ${SHELF_LABEL[shelf] || ''}`} maxH="86%">
       {loading ? (
         <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: '12px 4px' }}>Loading…</div>
       ) : (
         <>
+          {shelf === 'ao3' && (<>
           <div className="section-label" style={{ marginBottom: 8 }}>Only these languages</div>
           <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginBottom: 10 }}>
             Discovery will only surface works in these languages. Leave empty to allow all.
@@ -279,13 +286,14 @@ function DiscoveryFiltersSheet({ open, onClose, showToast }) {
               <Icon icon="solar:add-circle-linear" size={18} /> Add language
             </button>
           )}
+          </>)}
 
-          <div className="section-label" style={{ marginTop: 6, marginBottom: 8 }}>Never show works tagged</div>
+          <div className="section-label" style={{ marginTop: 6, marginBottom: 8 }}>Never show {SHELF_LABEL[shelf]} works tagged</div>
           <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginBottom: 10 }}>
-            Hide any discovered work carrying these tags — including ratings like “Explicit”.
+            Hide any discovered {SHELF_LABEL[shelf]} work carrying these tags{shelf === 'ao3' ? ' — including ratings like “Explicit”' : ''}. Applies to this shelf only.
           </div>
           <TagPicker picked={excluded} onAdd={addExcluded} onRemove={removeExcluded}
-            placeholder="Search AO3 tags to exclude…" accent="var(--danger, #f5455c)" />
+            placeholder="Type a tag to exclude…" accent="var(--danger, #f5455c)" />
 
           <button className="btn btn-lg btn-primary" style={{ width: '100%', marginTop: 18 }} disabled={saving} onClick={save}>
             {saving ? 'Saving…' : <><Icon icon="solar:check-circle-bold" size={18} /> Save filters</>}

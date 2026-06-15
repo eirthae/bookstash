@@ -5,7 +5,7 @@ import { fetchDiscoveryPrefs } from './discovery.js';
 import { fetchUpdates as rrFetchUpdates, searchTags as rrSearchTags } from './sources/royalroad.js';
 import { fetchUpdates as shFetchUpdates, searchTags as shSearchTags } from './sources/scribblehub.js';
 import { discoverBooks } from './goodreads.js';
-import { statusMatches, passesGlobalPrefs } from './shelving.js';
+import { statusMatches, passesGlobalPrefs, discoveryShelfForSource, excludedForShelf } from './shelving.js';
 
 // On-device sync engine. This is the job FicStash's server worker does, run on
 // the phone instead: re-check every followed (ongoing) work for new chapters and
@@ -60,10 +60,9 @@ export async function triggerSync({ onProgress } = {}) {
   }
 
   // ---- tracked-tag discovery: search each group, store new matches ----------
-  // Global discovery prefs (preferred languages / excluded tags) filter matches.
-  let prefs = { languages: [], excludedTags: [] };
+  // Global discovery prefs (preferred languages / per-shelf excluded tags).
+  let prefs = { languages: [], excludedTags: {} };
   try { prefs = await fetchDiscoveryPrefs(); } catch (e) { /* defaults */ }
-  const passesPrefs = (m, isLanguageGroup) => passesGlobalPrefs(m, prefs, isLanguageGroup);
 
   let newMatches = 0;
   let groups = [];
@@ -74,7 +73,13 @@ export async function triggerSync({ onProgress } = {}) {
     const langGroup = (g.tags || []).find((t) => t.kind === 'language');
     const include = (g.tags || []).filter((t) => t.kind !== 'language').map((t) => t.name).filter(Boolean);
     if (!langGroup && !include.length) continue;
-    const exclude = (g.excludedTags || []).map((t) => t.name).filter(Boolean);
+    // Per-group excludes + this Discovery shelf's global excludes (so you can,
+    // e.g., exclude "litrpg" from Stories only). Deduped, group's own first.
+    const shelf = discoveryShelfForSource(source);
+    const shelfExcl = excludedForShelf(prefs, shelf);
+    const exclude = [...(g.excludedTags || []), ...shelfExcl]
+      .map((t) => t.name).filter(Boolean)
+      .filter((n, i, a) => a.indexOf(n) === i);
     await sleep(SPACE_MS);
     let metas = [];
     try {
