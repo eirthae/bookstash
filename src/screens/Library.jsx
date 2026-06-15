@@ -188,7 +188,10 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
   const useSeries = isBooks && bookGroups.some(g => !g.standalone);
   // Fics group BY FANDOM (keeping fandom separation). Within each fandom a
   // multi-work AO3 series collapses into ONE clickable series card → series page.
-  const useFandom = shelf === 'fics';
+  // Fics group by fandom only on the Default sort. Time sorts (added/updated/
+  // read) show a FLAT chronological list across fandoms, so "Last added" is
+  // truly newest-first instead of buried inside fandom sections.
+  const useFandom = shelf === 'fics' && sort === 'default';
   const ficsGroups = useFandom ? groupFics(shown, sort, lastRead) : [];
   const sectionNames = useFandom
     ? ficsGroups.map(g => g.name)
