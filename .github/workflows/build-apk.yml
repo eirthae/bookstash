@@ -3,14 +3,10 @@ name: Build APK
 # Two ways to run:
 #  - Manual (workflow_dispatch): builds the APK as a throwaway Actions artifact.
 #  - Push a version tag (v*): builds + publishes a permanent GitHub Release.
-# BookStash is local-first — no backend, so there is NO env/secret injection.
+# BookStash is fully on-device — no backend, no secrets, no env injection. One
+# build, identical to what F-Droid produces from source.
 on:
   workflow_dispatch:
-    inputs:
-      no_proxy:
-        description: "F-Droid-style build: skip the Supabase proxy (forces on-device AO3)"
-        type: boolean
-        default: false
   push:
     tags:
       - 'v*'
@@ -36,34 +32,6 @@ jobs:
 
       - name: Unit tests
         run: npm test
-
-      - name: Configure Supabase env (optional — AO3 autocomplete proxy)
-        # If SUPABASE_URL + SUPABASE_ACCESS_TOKEN secrets are set (same two
-        # FicStash uses), fetch the publishable anon key via the Management API
-        # and write .env.production so ONLY the AO3 tag-autocomplete routes through
-        # the edge function. Missing/failed → autocomplete falls back on-device,
-        # build still succeeds.
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ "${{ inputs.no_proxy }}" = "true" ]; then
-            echo "no_proxy build — skipping Supabase env (F-Droid-style, on-device AO3)."; exit 0
-          fi
-          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
-            echo "No Supabase secrets — AO3 autocomplete will use the on-device path."; exit 0
-          fi
-          ref="$(printf '%s' "$SUPABASE_URL" | sed -E 's#https?://([^.]+)\..*#\1#')"
-          anon="$(curl -sS "https://api.supabase.com/v1/projects/$ref/api-keys?reveal=true" \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-            | jq -r '.[] | select(.name=="anon") | .api_key')"
-          if [ -z "$anon" ] || [ "$anon" = "null" ]; then
-            echo "Could not retrieve anon key — autocomplete falls back on-device."; exit 0
-          fi
-          printf 'VITE_SUPABASE_URL=%s\n' "$SUPABASE_URL" >> .env.production
-          printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$anon"     >> .env.production
-          echo "Wrote .env.production (anon key length: ${#anon})."
 
       - name: Build web bundle
         # VITE_APP_VERSION stamps the build with the tag (shown in Settings).

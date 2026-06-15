@@ -4,7 +4,7 @@ import { StatusBadge, FrozenBadge, TagChip, fmtWords, useToast, Sheet } from '..
 import { ChapterRow } from '../components/cards.jsx';
 import { COVER_PALETTES, CHAPTERS } from '../data/sample.js';
 import { fetchChapters, removeWork, updateWorkFields, fetchSeriesNames } from '../lib/library.js';
-import { hasSupabase } from '../lib/supabase.js';
+import { hasSupabase } from '../lib/backend.js';
 import { requestSave } from '../lib/tags.js';
 import { getSeriesFollow, requestSeriesDownload, setSeriesFollow } from '../lib/series.js';
 import { TagGroupBuilder } from './Discover.jsx';

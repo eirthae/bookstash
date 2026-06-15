@@ -1,5 +1,4 @@
 import { fetchHtml } from '../fetch.js';
-import { autocompleteViaProxy } from '../supabase.js';
 
 // On-device AO3 source — the JS port of FicStash's worker ao3.py. Fetches a work
 // from AO3's PUBLIC pages on the phone (native HTTP, no login) and parses clean
@@ -268,28 +267,21 @@ const namesFrom = (arr) => arr
 export async function autocompleteTag(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return [];
-  // Preferred: the Supabase tag-autocomplete proxy when one is configured at build
-  // time (your direct APK). It fetches AO3 server-side, sidestepping Capacitor's
-  // on-device query-string mangling (which lands every ?term=… on AO3's /404).
-  // F-Droid builds ship with no proxy configured, so they fall through to the
-  // on-device path below.
-  let proxyDiag = '';
-  try {
-    const viaProxy = await autocompleteViaProxy(q);
-    if (Array.isArray(viaProxy)) return viaProxy;
-    proxyDiag = 'proxy:off'; // null = no Supabase env baked in
-  } catch (e) { proxyDiag = `proxy:${(e && e.message) || e}`; }
-
-  // On-device fallback: AO3 returns a JSON array at /autocomplete/tag?term=…
-  // (Capacitor may mangle the query → /404; surfaced in the error if it does.)
+  // AO3 returns a JSON array [{ id, name }, …] at /autocomplete/tag?term=…
+  // fetchHtml hands the query to CapacitorHttp via `params` (no inline "?"), and
+  // the patching interceptor is off, so the native request is assembled correctly.
+  // Fully on-device — no backend, no proxy.
   const url = `https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`;
-  let r;
-  try { r = await fetchHtml(url); }
-  catch (e) { throw new Error([proxyDiag, `device:${(e && e.message) || e}`].filter(Boolean).join(' | ')); }
+  const r = await fetchHtml(url);
+  if (!r || r.status < 200 || r.status >= 300) {
+    throw new Error(`AO3 ${r ? r.status : '?'} @ ${(r && r.url) || url}`);
+  }
   let arr;
   try { arr = JSON.parse(r.html); } catch (e) { arr = null; }
-  if (Array.isArray(arr)) return namesFrom(arr);
-  throw new Error([proxyDiag, `device:AO3 ${r.status} @ ${r.url || url}`].filter(Boolean).join(' | '));
+  if (!Array.isArray(arr)) {
+    throw new Error(`AO3 non-JSON @ ${r.url || url}: ${(r.html || '').replace(/\s+/g, ' ').slice(0, 40)}`);
+  }
+  return namesFrom(arr);
 }
 
 // ---- small DOM helpers -----------------------------------------------------

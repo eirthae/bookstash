@@ -62,19 +62,3 @@ export async function fetchJson(url, params) {
   if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { data = null; } }
   return { status: res ? res.status : 0, data, url: (res && res.url) || url, raw };
 }
-
-// Native HTTP POST with a JSON body — used to call a Supabase edge function (the
-// AO3 tag-autocomplete proxy) on-device. The query goes in the BODY, not the URL,
-// so there's no "?" for CapacitorHttp to percent-encode and break.
-export async function postJson(url, headers, body) {
-  const res = await CapacitorHttp.post({
-    url,
-    headers: { 'Content-Type': 'application/json', ...(headers || {}) },
-    data: body,
-    responseType: 'text',
-  });
-  let data = res && res.data;
-  const raw = typeof data === 'string' ? data : '';
-  if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { data = null; } }
-  return { status: res ? res.status : 0, data, raw };
-}

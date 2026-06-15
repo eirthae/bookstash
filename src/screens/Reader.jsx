@@ -3,7 +3,7 @@ import Icon from '../components/Icon.jsx';
 import { Sheet, fmtWords } from '../components/ui.jsx';
 import { WORKS, CHAPTERS, READER_PARAS } from '../data/sample.js';
 import { fetchChapters, fetchSeriesWorks } from '../lib/library.js';
-import { hasSupabase } from '../lib/supabase.js';
+import { hasSupabase } from '../lib/backend.js';
 import { markRead, getReadingPos, getChapterPos, saveReadingPos } from '../lib/reading.js';
 
 export const READER_FONTS = [
