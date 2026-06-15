@@ -13,8 +13,18 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const API_UA = 'BookStash/1.0 (+https://github.com/eirthae/bookstash; personal reading app)';
 
 export async function fetchHtml(url) {
+  // CapacitorHttp (with `enabled: true`) percent-encodes a literal "?" in the url
+  // string into "%3F", so the query becomes part of the path and AO3 (and others)
+  // 404/redirect — this broke autocomplete, tag search, and series paging on
+  // device. Split any inline query off and hand it to the native layer via
+  // `params`, which builds "?k=v" correctly. One central fix covers every caller.
+  const qi = String(url).indexOf('?');
+  const base = qi >= 0 ? url.slice(0, qi) : url;
+  const params = {};
+  if (qi >= 0) for (const [k, v] of new URLSearchParams(url.slice(qi + 1))) params[k] = v;
   const res = await CapacitorHttp.get({
-    url,
+    url: base,
+    ...(qi >= 0 ? { params } : {}),
     headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml' },
     responseType: 'text',
     // follow redirects (default), and don't throw on non-2xx — we inspect status
