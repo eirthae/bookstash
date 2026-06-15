@@ -53,3 +53,17 @@ export async function fetchJson(url, params) {
   if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { data = null; } }
   return { status: res ? res.status : 0, data, url: (res && res.url) || url, raw };
 }
+
+// Alternate JSON transport via the global fetch(): with CapacitorHttp.enabled,
+// Capacitor patches window.fetch to route through native — a different code path
+// than CapacitorHttp.get(), so it's a useful fallback when .get() mangles the
+// URL. Builds the URL with the standard URL machinery (no manual ? handling).
+export async function fetchJsonViaFetch(url) {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': API_UA, Accept: 'application/json, text/javascript, */*' },
+  });
+  let data = null;
+  const text = await res.text();
+  try { data = JSON.parse(text); } catch (e) { data = null; }
+  return { status: res.status, data, url: res.url || url, raw: text };
+}

@@ -11,16 +11,17 @@ export async function getSeriesFollow(seriesId) {
   return r ? { seriesId: String(seriesId), seriesName: r.name || '', follow: !!r.follow } : null;
 }
 
-// Queue a one-shot "download every work in this series" (the engine fetches it
-// on the next on-device sync).
+// "Download every work in this series" — also follows it (follow=true) so newly
+// added works keep arriving, matching saved-work auto-follow. The engine fetches
+// on the next on-device sync.
 export async function requestSeriesDownload(seriesId, seriesName = '') {
   if (!seriesId) return { ok: false, error: 'No series id' };
   const m = readAll();
   const cur = m[String(seriesId)] || {};
-  m[String(seriesId)] = { name: seriesName || cur.name || '', follow: !!cur.follow, at: new Date().toISOString() };
+  m[String(seriesId)] = { name: seriesName || cur.name || '', follow: true, at: new Date().toISOString() };
   writeAll(m);
   kickSync();
-  return { ok: true };
+  return { ok: true, follow: true };
 }
 
 // Every queued/followed series — for the sync engine. follow=false rows are

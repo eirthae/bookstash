@@ -260,29 +260,36 @@ export async function searchLanguage(code, page = 1) {
 }
 
 // AO3 tag autocomplete (the JSON endpoint), for the tracker's tag picker.
+const namesFrom = (arr) => arr
+  .map((d) => (typeof d === 'string' ? d : ((d && (d.name ?? d.id)) || '')))
+  .filter(Boolean);
+
 export async function autocompleteTag(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return [];
-  // AO3 returns [{ id, name }, …] JSON. The term goes via `params` (not inline)
-  // because CapacitorHttp encodes a literal "?" in the url into "%3F", so AO3
-  // sees /autocomplete/tag%3Fterm=… and redirects to /404. A real failure
-  // (non-2xx, or a non-array body — e.g. a challenge page) throws with a reason
-  // the picker can surface, instead of silently collapsing to "no matches".
-  const r = await fetchJson(`https://${AO3_HOST}/autocomplete/tag`, { term: q });
-  // On failure, embed the status + the URL CapacitorHttp actually hit + a short
-  // body preview, so a single screenshot of the error tells us exactly what went
-  // wrong (mangled URL? wrong status? challenge page?) instead of guessing.
-  const where = (r && r.url) || '?';
-  if (!r || r.status < 200 || r.status >= 300) {
-    throw new Error(`AO3 ${r ? r.status : '?'} @ ${where}`);
+  // AO3 returns [{ id, name }, …] JSON at /autocomplete/tag?term=…
+  // CapacitorHttp's URL handling has bitten us both ways on-device (inline "?"
+  // gets %3F-encoded → /404; `params` reportedly failed too), and the native
+  // source says BOTH should work — so rather than guess, try every transport
+  // and use whichever actually returns the array. If all fail, throw with each
+  // attempt's status + final URL so the picker shows exactly what happened.
+  const base = `https://${AO3_HOST}/autocomplete/tag`;
+  const attempts = [
+    { how: 'params', run: () => fetchJson(base, { term: q }) },
+    { how: 'inline', run: () => fetchJson(`${base}?term=${encodeURIComponent(q)}`) },
+    { how: 'fetch', run: () => fetchJsonViaFetch(`${base}?term=${encodeURIComponent(q)}`) },
+  ];
+  const diag = [];
+  for (const a of attempts) {
+    let r;
+    try { r = await a.run(); } catch (e) { diag.push(`${a.how}:err ${(e && e.message) || e}`); continue; }
+    if (r && r.status >= 200 && r.status < 300 && Array.isArray(r.data)) return namesFrom(r.data);
+    const tail = !r ? 'no-response'
+      : !Array.isArray(r.data) ? `${r.status} non-JSON ${(r.raw || '').replace(/\s+/g, ' ').slice(0, 30)}`
+      : `${r.status}`;
+    diag.push(`${a.how}:${tail}@${(r && r.url) || '?'}`);
   }
-  if (!Array.isArray(r.data)) {
-    const preview = (r.raw || '').replace(/\s+/g, ' ').slice(0, 50);
-    throw new Error(`AO3 ${r.status} non-JSON @ ${where} :: ${preview}`);
-  }
-  return r.data
-    .map((d) => (typeof d === 'string' ? d : ((d && (d.name ?? d.id)) || '')))
-    .filter(Boolean);
+  throw new Error(diag.join(' | '));
 }
 
 // ---- small DOM helpers -----------------------------------------------------

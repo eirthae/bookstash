@@ -269,7 +269,7 @@ export function StoryDetailScreen({ work, suggestion, onSaved, onRemoved, onRelo
 
           {work.source === 'ao3' && work.ao3SeriesId && (
             <SeriesCard seriesId={work.ao3SeriesId} seriesName={work.ao3SeriesName}
-              part={work.ao3SeriesIndex} showToast={showToast} />
+              part={work.ao3SeriesIndex} showToast={showToast} nav={nav} />
           )}
 
           <div className="section-label" style={{ marginBottom: 8 }}>Summary</div>
@@ -369,7 +369,7 @@ export function StoryDetailScreen({ work, suggestion, onSaved, onRemoved, onRelo
 // AO3 series card: shows this work's series, with one tap to download every work
 // in the series and a toggle to follow it (auto-pull works added later). Both
 // just write to the followed_series queue; the worker does the fetching.
-function SeriesCard({ seriesId, seriesName, part, showToast }) {
+function SeriesCard({ seriesId, seriesName, part, showToast, nav }) {
   const [follow, setFollow] = useState(null);   // null = unknown/loading
   const [queued, setQueued] = useState(false);  // a one-shot download is in flight
   const [busy, setBusy] = useState(false);
@@ -407,15 +407,17 @@ function SeriesCard({ seriesId, seriesName, part, showToast }) {
 
   return (
     <div style={{ padding: 14, borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border)', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+      <button className="pressable" onClick={() => nav && nav.push('series', { seriesId, seriesName })}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, width: '100%', textAlign: 'left', background: 'transparent' }}>
         <Icon icon="solar:bookmark-square-bold" size={20} color="var(--accent)" />
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, lineHeight: 1.2 }}>{seriesName || 'AO3 series'}</div>
           <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>
-            {part != null ? `Part ${Number.isInteger(part) ? part : Math.round(part)} of this series` : 'Part of a series'}
+            {part != null ? `Part ${Number.isInteger(part) ? part : Math.round(part)} · view all in series` : 'View all works in this series'}
           </div>
         </div>
-      </div>
+        <Icon icon="solar:alt-arrow-right-linear" size={18} color="var(--text-tertiary)" />
+      </button>
       <div style={{ display: 'flex', gap: 8 }}>
         <button className={`btn ${queued ? 'btn-surface' : 'btn-primary'}`} style={{ flex: 1 }} disabled={busy || queued} onClick={download}>
           <Icon icon={queued ? 'solar:check-read-linear' : 'solar:download-minimalistic-bold'} size={18} />

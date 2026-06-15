@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Icon from '../components/Icon.jsx';
 import { Sheet, fmtWords } from '../components/ui.jsx';
 import { WORKS, CHAPTERS, READER_PARAS } from '../data/sample.js';
-import { fetchChapters } from '../lib/library.js';
+import { fetchChapters, fetchSeriesWorks } from '../lib/library.js';
 import { hasSupabase } from '../lib/supabase.js';
 import { markRead, getReadingPos, getChapterPos, saveReadingPos } from '../lib/reading.js';
 
@@ -52,6 +52,22 @@ export function ReaderScreen({ work: propWork, workId, chapterN = null, chapterT
       .catch(() => { if (alive) setChapters([]); });
     return () => { alive = false; };
   }, [work.id]);
+
+  // Series navigation: if this work is part of an AO3 series, load the series'
+  // works (in part order) so we can show "Part N of M" and jump prev/next.
+  const [seriesWorks, setSeriesWorks] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    if (!work.ao3SeriesId) { setSeriesWorks(null); return; }
+    fetchSeriesWorks(work.ao3SeriesId)
+      .then(r => { if (alive) setSeriesWorks(r && r.length ? r : null); })
+      .catch(() => { if (alive) setSeriesWorks(null); });
+    return () => { alive = false; };
+  }, [work.ao3SeriesId]);
+  const seriesPos = seriesWorks ? seriesWorks.findIndex(w => w.id === work.id) : -1;
+  const prevWork = seriesPos > 0 ? seriesWorks[seriesPos - 1] : null;
+  const nextWork = seriesPos >= 0 && seriesWorks && seriesPos < seriesWorks.length - 1 ? seriesWorks[seriesPos + 1] : null;
+  const openWork = (w) => nav.push('reader', { work: w });
 
   const hasReal = chapters && chapters.length > 0;
   // Sample prose only renders in the unconnected demo build. When connected,
@@ -179,6 +195,26 @@ export function ReaderScreen({ work: propWork, workId, chapterN = null, chapterT
                 <Icon icon={work.status === 'complete' ? 'solar:check-circle-bold' : 'solar:clock-circle-linear'} size={26} style={{ marginBottom: 8 }} />
                 <div style={{ fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600 }}>
                   {work.status === 'complete' ? 'The end · you’re all caught up' : 'Caught up — no newer chapters yet'}
+                </div>
+              </div>
+            )}
+
+            {seriesPos >= 0 && seriesWorks && seriesWorks.length > 1 && (
+              <div className="series-nav" style={{ marginTop: 22 }}>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12, fontWeight: 700, color: 'var(--reader-text-dim)', marginBottom: 12 }}>
+                  Part {seriesPos + 1} of {seriesWorks.length} in {work.ao3SeriesName || 'this series'}
+                </div>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {prevWork && (
+                    <button className="series-navbtn pressable" onClick={(e) => { e.stopPropagation(); openWork(prevWork); }}>
+                      <Icon icon="solar:alt-arrow-left-linear" size={17} /> Previous work
+                    </button>
+                  )}
+                  {nextWork && (
+                    <button className="series-navbtn pressable" onClick={(e) => { e.stopPropagation(); openWork(nextWork); }}>
+                      Next work <Icon icon="solar:alt-arrow-right-linear" size={17} />
+                    </button>
+                  )}
                 </div>
               </div>
             )}

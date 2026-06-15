@@ -7,6 +7,7 @@ import { LibraryScreen, shelfOf } from './screens/Library.jsx';
 import { WhatsNewScreen } from './screens/WhatsNew.jsx';
 import { DiscoverScreen, TagResultsScreen, LaterScreen } from './screens/Discover.jsx';
 import { StoryDetailScreen } from './screens/Detail.jsx';
+import { SeriesScreen } from './screens/Series.jsx';
 import { ReaderScreen } from './screens/Reader.jsx';
 import { SettingsScreen, ConnectScreen } from './screens/Settings.jsx';
 import { AboutScreen } from './screens/About.jsx';
@@ -119,6 +120,7 @@ export default function App() {
         onRemoved={(id) => (p.onRemoved || removeFromLibrary)(id)}
         onReload={reload} />;
     }
+    if (top.screen === 'series') return <SeriesScreen seriesId={p.seriesId} seriesName={p.seriesName} onReload={reload} nav={n} />;
     if (top.screen === 'reader') return <ReaderScreen work={p.work} workId={p.workId} chapterN={p.chapterN} chapterTitle={p.chapterTitle} settings={reader} setSettings={updateReader} nav={n} />;
     if (top.screen === 'about') return <AboutScreen onBack={n.pop} />;
     if (top.screen === 'connect') return <ConnectScreen nav={n} />;

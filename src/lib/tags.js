@@ -7,6 +7,7 @@ import { hashStr, COVER_PALETTES } from '../data/sample.js';
 import { searchTags as ao3Search, autocompleteTag, fetchWork } from './sources/ao3.js';
 import { fetchWorks } from './library.js';
 import { kickSync } from './sync.js';
+import { notifySavedAvailable } from './notify.js';
 
 // Tracked tag groups + matches — the on-device version of FicStash's tags.js.
 // A "group" is one or more tags tracked together (matchMode 'all' = AND, 'any' =
@@ -25,7 +26,7 @@ function mapGroup(g, counts = { total: 0, fresh: 0 }) {
     id: g.id, name: g.label || names.join(' + ') || 'Untitled group', label: g.label || '',
     source: g.source || 'ao3', tags, names, excludedTags,
     excludedNames: excludedTags.map((t) => t.name).filter(Boolean),
-    matchMode: g.matchMode || 'all', kind,
+    matchMode: g.matchMode || 'all', status: g.status || 'all', kind,
     language: langTag ? (langTag.id || langTag.name) : null,
     count: counts.total, fresh: counts.fresh, palette: g.palette ?? 0,
   };
@@ -45,12 +46,13 @@ function mapMatch(row) {
 const cleanTags = (list) => (list || [])
   .map((t) => ({ name: t.name, id: t.id ?? '', kind: t.kind || 'freeform' })).filter((t) => t.name);
 
-export async function createGroup({ label = '', tags, excludedTags = [], matchMode = 'all', source = 'ao3' }) {
+export async function createGroup({ label = '', tags, excludedTags = [], matchMode = 'all', source = 'ao3', status = 'all' }) {
   const clean = cleanTags(tags);
   if (!clean.length) throw new Error('A group needs at least one tag');
   const group = {
     id: newId(), label, source, tags: clean, excludedTags: cleanTags(excludedTags),
     matchMode: matchMode === 'any' ? 'any' : 'all',
+    status: ['ongoing', 'complete'].includes(status) ? status : 'all',
     palette: paletteIndexFor(label || clean.map((t) => t.name).join(' + ')),
     createdAt: new Date().toISOString(), lastChecked: null,
   };
@@ -131,7 +133,8 @@ export async function requestSave(matchId) {
     if (m.source === 'ao3') {
       const w = await fetchWork(m.sourceId);
       if (w.restricted) { await patchMatch(m.id, { saved: true, seen: true }); return { ok: false, restricted: true }; }
-      await addWork(w, w.chaptersData);
+      await addWork({ ...w, origin: 'tag' }, w.chaptersData); // 'tag' = saved from Discovery → What's New "Saved"
+      notifySavedAvailable([{ title: w.title || m.title }]); // OS notification: it's downloaded now
     }
     await patchMatch(m.id, { saved: true, seen: true });
     return { ok: true };

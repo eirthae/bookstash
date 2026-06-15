@@ -600,6 +600,10 @@ input,textarea { font-family:inherit; }
 .eoc .star { display:flex; align-items:center; justify-content:center; gap:10px; color:var(--reader-text-dim); margin-bottom:18px; }
 .eoc .star .ln { height:1px; width:46px; background:var(--reader-border); }
 .eoc .nextbtn { display:inline-flex; align-items:center; gap:9px; height:50px; padding:0 24px; border-radius:var(--radius-full); background:var(--reader-accent); color:#fff; font-family:var(--font-sans); font-weight:700; font-size:15px; }
+/* prev/next-work-in-series buttons at the end of a work */
+.series-navbtn { display:inline-flex; align-items:center; gap:7px; height:44px; padding:0 18px; border-radius:var(--radius-full); background:var(--reader-surface); color:var(--reader-ui); border:1px solid var(--reader-border); font-family:var(--font-sans); font-weight:700; font-size:13.5px; }
+/* per-part badge on the series page cards */
+.series-part-badge { position:absolute; top:7px; right:7px; z-index:2; background:var(--accent); color:#fff; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; pointer-events:none; }
 
 /* reader chrome (auto-hide) */
 .reader-chrome { position:absolute; left:0; right:0; z-index:20; transition:opacity .3s, transform .3s; }

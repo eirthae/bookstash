@@ -106,6 +106,11 @@ export async function triggerSync({ onProgress } = {}) {
         metas = await searchTags(include, exclude);
       }
     } catch (e) { /* skip this group */ }
+    // Completion-status filter on the group: 'ongoing' / 'complete' / 'all'.
+    const gStatus = (g.status || 'all');
+    if (gStatus === 'ongoing' || gStatus === 'complete') {
+      metas = metas.filter((m) => (((m.status || '').toLowerCase() === 'complete') === (gStatus === 'complete')));
+    }
     metas = metas.filter((m) => passesPrefs(m, !!langGroup));
     try {
       newMatches += await upsertMatches(g.id, metas.map((m) => ({ ...m, tag: g.label || include[0] || (langGroup && (langGroup.name)) || 'Tracked' })));

@@ -495,6 +495,7 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
   const [picked, setPicked] = useState([]);
   const [excluded, setExcluded] = useState([]);
   const [matchMode, setMatchMode] = useState('all');
+  const [status, setStatus] = useState('all'); // all | ongoing | complete
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -504,12 +505,12 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
     if (open) {
       setSource(initialSource || 'ao3');
       setPicked(initialTags || []);
-      setExcluded([]); setMatchMode('all'); setErr('');
+      setExcluded([]); setMatchMode('all'); setStatus('all'); setErr('');
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Switching source clears picks — AO3 tags and RR genres aren't interchangeable.
-  const changeSource = (s) => { setSource(s); setPicked([]); setExcluded([]); setMatchMode('all'); setErr(''); };
+  const changeSource = (s) => { setSource(s); setPicked([]); setExcluded([]); setMatchMode('all'); setStatus('all'); setErr(''); };
 
   const isAo3 = source === 'ao3';
   const isBooks = source === 'books';
@@ -532,6 +533,7 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
         tags: picked,
         excludedTags: excluded,
         matchMode: isAo3 ? matchMode : 'all',
+        status: isBooks ? 'all' : status,
       });
       onCreated(g);
     } catch (e) {
@@ -595,6 +597,22 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
               {matchMode === 'all'
                 ? 'A work must carry every tag in the group.'
                 : 'A work matches if it has at least one of these tags.'}
+            </div>
+          </div>
+        )}
+
+        {!isBooks && (
+          <div>
+            <div className="section-label" style={{ marginBottom: 8 }}>Status</div>
+            <Segmented
+              value={status}
+              onChange={setStatus}
+              options={[{ value: 'all', label: 'All' }, { value: 'ongoing', label: 'Ongoing' }, { value: 'complete', label: 'Complete' }]}
+            />
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 7 }}>
+              {status === 'all' ? 'Match works of any completion status.'
+                : status === 'ongoing' ? 'Only works still in progress.'
+                : 'Only finished works.'}
             </div>
           </div>
         )}

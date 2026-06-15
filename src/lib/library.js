@@ -92,6 +92,40 @@ export async function fetchWorks() {
   return (rows || []).map(mapWork);
 }
 
+// All downloaded works in an AO3 series, in reading order (part #). Powers the
+// Series screen and the reader's prev/next-in-series navigation.
+export async function fetchSeriesWorks(ao3SeriesId) {
+  if (!ao3SeriesId) return [];
+  const rows = await getAllWorks();
+  return (rows || [])
+    .filter((r) => (r.ao3SeriesId || '') === String(ao3SeriesId))
+    .map(mapWork)
+    .sort((a, b) => (a.ao3SeriesIndex ?? 1e9) - (b.ao3SeriesIndex ?? 1e9) || (a.title || '').localeCompare(b.title || ''));
+}
+
+// Day bucket for the What's New feeds (Today / Yesterday / This week + "Xh ago").
+function dayBucketLocal(iso) {
+  if (!iso) return { day: 'This week', time: '' };
+  const then = new Date(iso); const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.floor((startOfToday - new Date(then.getFullYear(), then.getMonth(), then.getDate())) / 86400000);
+  const day = diffDays <= 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : 'This week';
+  const secs = Math.max((now - then) / 1000, 0);
+  const time = secs < 3600 ? `${Math.max(1, Math.floor(secs / 60))}m ago` : secs < 86400 ? `${Math.floor(secs / 3600)}h ago` : `${Math.floor(secs / 86400)}d ago`;
+  return { day, time };
+}
+
+// Works the user SAVED from Discovery that are now downloaded (origin 'tag').
+// The "Saved" feed in What's New — your picks, fetched — not the raw match feed.
+export async function fetchSavedWorks() {
+  const rows = await getAllWorks();
+  return (rows || [])
+    .filter((r) => (r.origin || '') === 'tag')
+    .map(mapWork)
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    .map((w) => { const { day, time } = dayBucketLocal(w.createdAt); return { ...w, day, time, fresh: true }; });
+}
+
 export async function removeWork(id) {
   return deleteWork(id);
 }

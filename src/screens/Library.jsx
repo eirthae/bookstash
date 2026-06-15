@@ -13,6 +13,13 @@ function fandomName(work) {
   return (work.fandom || 'Other').split('–')[0].split(' - ')[0].trim() || 'Other';
 }
 
+// Lowercased tag texts of a work (tags are [{ t, k }]), for search + filtering.
+function workTagSet(work) {
+  return (Array.isArray(work.tags) ? work.tags : [])
+    .map(t => (typeof t === 'string' ? t : (t && (t.t || t.name)) || '').toLowerCase())
+    .filter(Boolean);
+}
+
 // Which shelf a work belongs to. Routing is automatic by how it entered the
 // library: uploaded EPUBs are Books; AO3 works (bookmarks, tag saves, AO3 links)
 // are Fics; everything else added from another site is a Story.
@@ -100,6 +107,10 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
   const [pendingLinks, setPendingLinks] = useState([]);
   const [collapsed, setCollapsed] = useState({});   // fandom name -> collapsed?
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [query, setQuery] = useState('');           // search box (title/author/fandom/tag)
+  const [incTags, setIncTags] = useState([]);        // advanced filter: must have ALL of these
+  const [excTags, setExcTags] = useState([]);        // advanced filter: must have NONE of these
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const toggleSection = (name) => setCollapsed(c => ({ ...c, [name]: !c[name] }));
 
   const reloadLinks = () => fetchPendingLinks().then(setPendingLinks).catch(() => {});
@@ -156,7 +167,35 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
   // Counts per shelf (for the tab labels) and the works for the active shelf.
   const counts = { fics: 0, stories: 0, books: 0 };
   for (const w of ready) counts[shelfOf(w)]++;
-  const shelfWorks = ready.filter(w => shelfOf(w) === shelf);
+  const shelfAll = ready.filter(w => shelfOf(w) === shelf);
+
+  // Search + advanced tag filter (before status/sort). Search matches
+  // title/author/fandom/tags; include tags require ALL present; exclude none.
+  const q = query.trim().toLowerCase();
+  const inc = incTags.map(t => t.toLowerCase());
+  const exc = excTags.map(t => t.toLowerCase());
+  const matchesSearch = (w) => !q || [w.title, w.customTitle, w.author, w.fandom, w.pairing]
+    .some(s => (s || '').toLowerCase().includes(q)) || workTagSet(w).some(t => t.includes(q));
+  const matchesTags = (w) => {
+    if (!inc.length && !exc.length) return true;
+    const set = workTagSet(w);
+    if (inc.length && !inc.every(t => set.includes(t))) return false;
+    if (exc.length && exc.some(t => set.includes(t))) return false;
+    return true;
+  };
+  const filterActive = !!q || inc.length > 0 || exc.length > 0;
+  const shelfWorks = shelfAll.filter(w => matchesSearch(w) && matchesTags(w));
+
+  // Tag pool for the filter sheet: this shelf's tags, most-common first.
+  const tagPool = (() => {
+    const m = new Map();
+    for (const w of shelfAll) for (const t of (Array.isArray(w.tags) ? w.tags : [])) {
+      const text = (typeof t === 'string' ? t : (t && (t.t || t.name)) || '').trim();
+      if (!text) continue;
+      const e = m.get(text.toLowerCase()) || { text, n: 0 }; e.n++; m.set(text.toLowerCase(), e);
+    }
+    return [...m.values()].sort((a, b) => b.n - a.n).map(e => e.text);
+  })();
 
   // Status filter (fics/stories only).
   const ongoingCount = shelfWorks.filter(w => w.status !== 'complete').length;
@@ -175,17 +214,12 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
   // uploads that share a series or author cluster without any manual work.
   const bookGroups = isBooks ? groupBooks(shown, sort, lastRead) : [];
   const useSeries = isBooks && bookGroups.some(g => !g.standalone);
-  // Fics ALWAYS group (by AO3 series first, then fandom) — every sort reorders
-  // the sections instead of flattening, so the collapse toggle never vanishes
-  // and the row never jumps when you change sort. AO3 series are pulled out
-  // first (auto-grouped like Books); the rest ("loose") group by fandom.
+  // Fics group BY FANDOM (keeping fandom separation). Within each fandom a
+  // multi-work AO3 series collapses into ONE clickable series card → series page.
   const useFandom = shelf === 'fics';
-  const { seriesGroups: ficsSeries, loose: ficsLoose } = useFandom
-    ? groupFicsSeries(shown, sort, lastRead)
-    : { seriesGroups: [], loose: shown };
-  const fandomNames = useFandom ? [...new Set(ficsLoose.map(fandomName))] : [];
+  const ficsGroups = useFandom ? groupFics(shown, sort, lastRead) : [];
   const sectionNames = useFandom
-    ? [...ficsSeries.map(g => g.name), ...fandomNames]
+    ? ficsGroups.map(g => g.name)
     : useSeries ? bookGroups.map(g => g.name) : [];
   const anyExpanded = sectionNames.some(n => !collapsed[n]);
   const showCollapseToggle = sectionNames.length > 1 && shown.length > 0;
@@ -232,6 +266,42 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
           ))}
         </div>
 
+        {(shelfAll.length > 0 || filterActive) && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '0 20px 12px' }}>
+            <div className="searchfield" style={{ flex: 1 }}>
+              <Icon icon="solar:magnifer-linear" size={18} color="var(--text-tertiary)" />
+              <input placeholder={`Search ${shelf}…`} value={query} onChange={(e) => setQuery(e.target.value)}
+                autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+              {query && <button className="iconbtn" style={{ width: 22, height: 22 }} onClick={() => setQuery('')}><Icon icon="solar:close-circle-bold" size={16} color="var(--text-tertiary)" /></button>}
+            </div>
+            {!isBooks && (
+              <button className="iconbtn ghost" onClick={() => setFiltersOpen(true)}
+                style={{ flex: 'none', width: 42, height: 42, borderRadius: 'var(--radius-md)',
+                  background: (incTags.length || excTags.length) ? 'var(--accent-soft)' : 'var(--surface-2)',
+                  color: (incTags.length || excTags.length) ? 'var(--accent)' : undefined }}
+                aria-label="Filter by tags">
+                <Icon icon="solar:tuning-2-linear" size={20} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {(incTags.length > 0 || excTags.length > 0) && (
+          <div className="chiprow" style={{ flexWrap: 'wrap', gap: 8, margin: '0 20px 12px' }}>
+            {incTags.map(t => (
+              <span key={`i${t}`} className="chip" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', paddingRight: 6 }}>
+                {t}<button className="iconbtn" style={{ width: 18, height: 18, marginLeft: 2 }} onClick={() => setIncTags(xs => xs.filter(x => x !== t))}><Icon icon="solar:close-circle-bold" size={14} color="var(--accent)" /></button>
+              </span>
+            ))}
+            {excTags.map(t => (
+              <span key={`e${t}`} className="chip" style={{ background: 'color-mix(in srgb, var(--danger,#f5455c) 16%, transparent)', color: 'var(--danger,#f5455c)', paddingRight: 6 }}>
+                –{t}<button className="iconbtn" style={{ width: 18, height: 18, marginLeft: 2 }} onClick={() => setExcTags(xs => xs.filter(x => x !== t))}><Icon icon="solar:close-circle-bold" size={14} color="var(--danger,#f5455c)" /></button>
+              </span>
+            ))}
+            <button className="linklike" style={{ fontSize: 12 }} onClick={() => { setIncTags([]); setExcTags([]); }}>Clear</button>
+          </div>
+        )}
+
         {(shelfWorks.length > 0 || pending.length > 0) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 20px 16px' }}>
             {isBooks ? (
@@ -277,18 +347,18 @@ export function LibraryScreen({ works, layout = 'fandom', connected = true, onRe
         ) : useSeries ? (
           <SeriesSections groups={bookGroups} open={open} onDelete={setPendingDelete} collapsed={collapsed} toggle={toggleSection} />
         ) : useFandom ? (
-          <>
-            {ficsSeries.length > 0 && (
-              <SeriesSections groups={ficsSeries} open={open} onDelete={setPendingDelete} collapsed={collapsed} toggle={toggleSection} />
-            )}
-            <FandomSections works={ficsLoose} open={open} onDelete={setPendingDelete} collapsed={collapsed} toggle={toggleSection} sort={sort} lastRead={lastRead} />
-          </>
+          <FicsSections groups={ficsGroups} open={open}
+            openSeries={(s) => nav.push('series', { seriesId: s.seriesId, seriesName: s.name, onReload })}
+            onDelete={setPendingDelete} collapsed={collapsed} toggle={toggleSection} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 13, padding: '0 20px 24px' }}>
             {shown.map(w => <LibraryCard key={w.id} work={w} onOpen={open} onDelete={() => setPendingDelete(w)} />)}
           </div>
         )}
       </PullToRefresh>
+
+      <FilterSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} pool={tagPool}
+        inc={incTags} exc={excTags} setInc={setIncTags} setExc={setExcTags} />
 
       <Sheet open={!!pendingDelete} onClose={() => setPendingDelete(null)} title="Remove from library?">
         <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-secondary)', marginBottom: 16 }}>
@@ -382,27 +452,41 @@ function groupBooks(works, sort = 'added', lastRead = {}) {
   return real;
 }
 
-// Auto-group AO3 fics by their AO3 series: works sharing a series cluster under
-// the series name, ordered by part; everything else is "loose" and falls through
-// to the existing fandom grouping. Like Books, a series keeps its section even
-// with one downloaded work. Series sections sort alphabetically by series name.
-function groupFicsSeries(works, sort = 'default', lastRead = {}) {
-  const byKey = new Map();
-  const loose = [];
+// Group AO3 fics BY FANDOM, with multi-work series collapsed into one clickable
+// series card inside their fandom. Each section = { name, series:[{seriesId,
+// name, items}], loose:[works], items:[all] }. A series is filed under the
+// fandom of its first work; a single-work series stays a normal card.
+function groupFics(works, sort = 'default', lastRead = {}) {
+  const seriesByKey = new Map();
+  const looseAll = [];
   for (const w of works) {
-    const key = (w.ao3SeriesId || '').trim();
-    const name = (w.ao3SeriesName || '').trim();
-    if (!key || !name) { loose.push(w); continue; }
-    let g = byKey.get(key);
-    if (!g) { g = { name, items: [] }; byKey.set(key, g); }
-    g.items.push(w);
+    const sid = (w.ao3SeriesId || '').trim();
+    const sname = (w.ao3SeriesName || '').trim();
+    if (!sid || !sname) { looseAll.push(w); continue; }
+    let s = seriesByKey.get(sid);
+    if (!s) { s = { seriesId: sid, name: sname, items: [] }; seriesByKey.set(sid, s); }
+    s.items.push(w);
   }
-  const seriesGroups = [...byKey.values()];
-  for (const g of seriesGroups) {
-    g.items.sort((a, b) => (a.ao3SeriesIndex ?? 1e9) - (b.ao3SeriesIndex ?? 1e9) || (a.title || '').localeCompare(b.title || ''));
+  const byFandom = new Map();
+  const ensure = (name) => {
+    let g = byFandom.get(name);
+    if (!g) { g = { name, series: [], loose: [], items: [] }; byFandom.set(name, g); }
+    return g;
+  };
+  for (const w of looseAll) { const g = ensure(fandomName(w)); g.loose.push(w); g.items.push(w); }
+  for (const s of seriesByKey.values()) {
+    s.items.sort((a, b) => (a.ao3SeriesIndex ?? 1e9) - (b.ao3SeriesIndex ?? 1e9) || (a.title || '').localeCompare(b.title || ''));
+    if (s.items.length < 2) { const w = s.items[0]; const g = ensure(fandomName(w)); g.loose.push(w); g.items.push(w); continue; }
+    const g = ensure(fandomName(s.items[0]));
+    g.series.push(s); g.items.push(...s.items);
   }
-  orderGroups(seriesGroups, sort, lastRead);
-  return { seriesGroups, loose };
+  const groups = [...byFandom.values()];
+  for (const g of groups) {
+    g.loose = sortWorks(g.loose, sort, lastRead);
+    g.series.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  orderGroups(groups, sort, lastRead);
+  return groups;
 }
 
 // Order section groups by the active sort (shared by fandom + fics-series
@@ -449,17 +533,9 @@ function SeriesSections({ groups, open, onDelete, collapsed, toggle }) {
   );
 }
 
-function FandomSections({ works, open, onDelete, collapsed, toggle, sort = 'default', lastRead = {} }) {
-  const groups = [];
-  const byName = new Map();
-  for (const w of works) {
-    const name = fandomName(w);
-    let g = byName.get(name);
-    if (!g) { g = { name, items: [] }; byName.set(name, g); groups.push(g); }
-    g.items.push(w);
-  }
-  orderGroups(groups, sort, lastRead);
-
+// Fics shelf: fandom sections, each with its series cards (clickable → series
+// page) above its loose works. Built by groupFics.
+function FicsSections({ groups, open, openSeries, onDelete, collapsed, toggle }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '0 20px 24px' }}>
       {groups.map(g => {
@@ -474,12 +550,80 @@ function FandomSections({ works, open, onDelete, collapsed, toggle, sort = 'defa
             </button>
             {isOpen && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 13, paddingTop: 11 }}>
-                {g.items.map(w => <LibraryCard key={w.id} work={w} onOpen={open} onDelete={() => onDelete(w)} />)}
+                {g.series.map(s => <SeriesRow key={s.seriesId} series={s} onOpen={() => openSeries(s)} />)}
+                {g.loose.map(w => <LibraryCard key={w.id} work={w} onOpen={open} onDelete={() => onDelete(w)} />)}
               </div>
             )}
           </div>
         );
       })}
     </div>
+  );
+}
+
+// A series, collapsed to one row in the fandom list. Tap → the series page.
+function SeriesRow({ series, onOpen }) {
+  const n = series.items.length;
+  const have = series.items.filter(w => (w.chapters || 0) > 0 || w.offline).length;
+  return (
+    <button className="series-row pressable" onClick={onOpen}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
+        padding: 13, borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+      <Icon icon="solar:bookmark-square-bold" size={22} color="var(--accent)" />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{series.name}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 2 }}>Series · {n} work{n === 1 ? '' : 's'}{have < n ? ` · ${have} downloaded` : ''}</div>
+      </div>
+      <Icon icon="solar:alt-arrow-right-linear" size={18} color="var(--text-tertiary)" />
+    </button>
+  );
+}
+
+// Advanced tag filter: pick tags from the shelf's pool. Tap to require (AND),
+// − to exclude. A tag can't be both.
+function FilterSheet({ open, onClose, pool, inc, exc, setInc, setExc }) {
+  const [q, setQ] = useState('');
+  const needle = q.trim().toLowerCase();
+  const list = pool.filter(t => !needle || t.toLowerCase().includes(needle)).slice(0, 100);
+  const toggle = (set, other, t) => { set(xs => xs.includes(t) ? xs.filter(x => x !== t) : [...xs, t]); other(xs => xs.filter(x => x !== t)); };
+  return (
+    <Sheet open={open} onClose={onClose} title="Filter by tags" maxH="82%">
+      <div className="searchfield" style={{ marginBottom: 10 }}>
+        <Icon icon="solar:magnifer-linear" size={18} color="var(--text-tertiary)" />
+        <input placeholder="Find a tag…" value={q} onChange={(e) => setQ(e.target.value)} autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, lineHeight: 1.45 }}>
+        Tap a tag to require it · − to exclude. Works must match every required tag.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: '50vh', overflowY: 'auto' }}>
+        {list.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: '12px 4px' }}>No tags on this shelf.</div>
+        ) : list.map(t => {
+          const isInc = inc.includes(t), isExc = exc.includes(t);
+          return (
+            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button className="pressable" onClick={() => toggle(setInc, setExc, t)}
+                style={{ flex: 1, textAlign: 'left', background: 'transparent', padding: '10px 4px', fontSize: 13.5,
+                  fontWeight: (isInc || isExc) ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  color: isInc ? 'var(--accent)' : isExc ? 'var(--danger,#f5455c)' : 'var(--text-primary)' }}>
+                {isInc ? '✓ ' : ''}{t}
+              </button>
+              <button className="iconbtn" onClick={() => toggle(setExc, setInc, t)} aria-label="Exclude tag"
+                style={{ width: 30, height: 30, borderRadius: 8, flex: 'none',
+                  background: isExc ? 'color-mix(in srgb, var(--danger,#f5455c) 18%, transparent)' : 'var(--surface-2)',
+                  color: isExc ? 'var(--danger,#f5455c)' : 'var(--text-tertiary)' }}>
+                <Icon icon="solar:minus-circle-linear" size={16} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+        {(inc.length > 0 || exc.length > 0) && (
+          <button className="btn btn-surface" style={{ flex: 1 }} onClick={() => { setInc([]); setExc([]); }}>Clear</button>
+        )}
+        <button className="btn btn-primary" style={{ flex: 1 }} onClick={onClose}>Done</button>
+      </div>
+    </Sheet>
   );
 }
