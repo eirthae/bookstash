@@ -708,10 +708,21 @@ export function TagResultsScreen({ tag, nav, onLeave }) {
     showToast('Saved for later', 'solar:bookmark-linear');
   };
 
-  const save = (w) => {
+  const save = async (w) => {
     setItems((arr) => (arr || []).map((x) => (x.id === w.id ? { ...x, wanted: true } : x)));
-    requestSave(w.matchId || w.id).then(() => kickSync()).catch(() => {});
-    showToast('Saved — starting download', 'solar:download-minimalistic-linear');
+    showToast('Saving…', 'solar:download-minimalistic-linear');
+    let r;
+    try { r = await requestSave(w.matchId || w.id); } catch (e) { r = { ok: false, error: (e && e.message) || 'Save failed' }; }
+    if (r && r.ok) {
+      setItems((arr) => (arr || []).map((x) => (x.id === w.id ? { ...x, wanted: false, saved: true } : x)));
+      showToast('Saved to your library', 'solar:check-circle-bold');
+      kickSync();
+    } else {
+      // Revert the optimistic state and show the real reason so failures aren't silent.
+      setItems((arr) => (arr || []).map((x) => (x.id === w.id ? { ...x, wanted: false } : x)));
+      showToast(r && r.restricted ? 'Restricted — open it on the source'
+        : `Couldn’t save${r && r.error ? `: ${r.error}` : ''}`, 'solar:danger-triangle-linear');
+    }
   };
   const saveStateOf = (w) => (w.saved ? 'saved' : w.wanted ? 'queued' : 'idle');
 
@@ -789,10 +800,21 @@ export function LaterScreen({ nav, onLeave }) {
     unmarkLater(w.matchId || w.id).catch(() => {});
     showToast('Back in Discover', 'solar:undo-left-round-linear');
   };
-  const save = (w) => {
+  const save = async (w) => {
     setItems((arr) => (arr || []).map((x) => (x.id === w.id ? { ...x, wanted: true } : x)));
-    requestSave(w.matchId || w.id).then(() => kickSync()).catch(() => {});
-    showToast('Saved — starting download', 'solar:download-minimalistic-linear');
+    showToast('Saving…', 'solar:download-minimalistic-linear');
+    let r;
+    try { r = await requestSave(w.matchId || w.id); } catch (e) { r = { ok: false, error: (e && e.message) || 'Save failed' }; }
+    if (r && r.ok) {
+      setItems((arr) => (arr || []).map((x) => (x.id === w.id ? { ...x, wanted: false, saved: true } : x)));
+      showToast('Saved to your library', 'solar:check-circle-bold');
+      kickSync();
+    } else {
+      // Revert the optimistic state and show the real reason so failures aren't silent.
+      setItems((arr) => (arr || []).map((x) => (x.id === w.id ? { ...x, wanted: false } : x)));
+      showToast(r && r.restricted ? 'Restricted — open it on the source'
+        : `Couldn’t save${r && r.error ? `: ${r.error}` : ''}`, 'solar:danger-triangle-linear');
+    }
   };
   const saveStateOf = (w) => (w.saved ? 'saved' : w.wanted ? 'queued' : 'idle');
 
