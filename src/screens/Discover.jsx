@@ -676,7 +676,7 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
 }
 
 // ---- Results: works the worker found for a tracked group -------------------
-export function TagResultsScreen({ tag, nav, onLeave }) {
+export function TagResultsScreen({ tag, nav, onLeave, onSaved }) {
   const [items, setItems] = useState(null); // null = loading
   const [titleExpanded, setTitleExpanded] = useState(false); // tap title to see full tag-group name
   const [toast, showToast] = useToast();
@@ -716,6 +716,7 @@ export function TagResultsScreen({ tag, nav, onLeave }) {
     if (r && r.ok) {
       setItems((arr) => (arr || []).map((x) => (x.id === w.id ? { ...x, wanted: false, saved: true } : x)));
       showToast('Saved to your library', 'solar:check-circle-bold');
+      if (onSaved) onSaved(); // refresh the Library tab so the saved work shows immediately
       kickSync();
     } else {
       // Revert the optimistic state and show the real reason so failures aren't silent.
@@ -777,7 +778,7 @@ export function TagResultsScreen({ tag, nav, onLeave }) {
 }
 
 // ---- Later stash: works swiped left ("maybe") for safe-keeping --------------
-export function LaterScreen({ nav, onLeave }) {
+export function LaterScreen({ nav, onLeave, onSaved }) {
   const [items, setItems] = useState(null); // null = loading
   const [toast, showToast] = useToast();
 
@@ -808,6 +809,7 @@ export function LaterScreen({ nav, onLeave }) {
     if (r && r.ok) {
       setItems((arr) => (arr || []).map((x) => (x.id === w.id ? { ...x, wanted: false, saved: true } : x)));
       showToast('Saved to your library', 'solar:check-circle-bold');
+      if (onSaved) onSaved(); // refresh the Library tab so the saved work shows immediately
       kickSync();
     } else {
       // Revert the optimistic state and show the real reason so failures aren't silent.
