@@ -1,0 +1,27 @@
+BookStash is a private, local-first reader and library for web fiction and books. Your device is the database: no accounts, no servers holding your data, no subscriptions. You add what you want to read, it is downloaded to your own device, and it is yours — offline, private, forever.
+
+BookStash gathers stories into one clean, offline library you fully own. It is built for the reader who wants their shelf — curated by them, stored by them — not another feed.
+
+<b>Principles</b>
+
+* Local-first. Everything lives on your device in an on-device database. The app does its own downloading; there is no central server.
+* You own your data. Back it up, export it, move it. It never lives on someone else's computer.
+* Private by default. Nothing about what you read leaves your device.
+* Polite to sources. Each device only fetches its owner's own library, at a gentle, rate-limited pace.
+* Free and open. GPLv3. No paywalled features, no ads, no tracking.
+
+<b>What it does</b>
+
+* Library — your downloaded works on three shelves (fanfic, web serials, books), grouped by fandom or series, with search and include/exclude tag filtering.
+* Discover — track tags from supported sources; BookStash surfaces new matching works on each sync. Filter by completion status, and set per-shelf excluded tags.
+* Reader — clean, distraction-free reading with adjustable fonts; remembers your place, and moves between chapters and works in a series.
+* What's New — see newly fetched and saved works at a glance.
+* Series — follow a series and pull every work in it.
+
+<b>Sources</b>
+
+BookStash reads publicly available works from sites such as Archive of Our Own, Royal Road and Scribble Hub, and book metadata from public catalogues. It fetches only your own library, on your device, at a polite pace.
+
+<b>Status</b>
+
+Early development. Expect rough edges while features stabilise.

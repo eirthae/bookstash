@@ -54,11 +54,15 @@ jobs:
             npx cap add android
           fi
 
-      - name: Generate app icons (book glyph on primary-200 background)
+      - name: Generate app icons + splash from resources/icon-only.png
+        # Uses the committed icon as-is. The icon is a full-bleed square on
+        # #6020A0, so we set that as the adaptive-icon + splash background to keep
+        # it edge-to-edge (no white framing). logo.png (a copy of the icon) is the
+        # splash logo.
         run: |
-          npm i -D sharp
-          node scripts/gen-icons.mjs
-          npx --yes @capacitor/assets generate --android --assetPath resources
+          npx --yes @capacitor/assets generate --android --assetPath resources \
+            --iconBackgroundColor '#6020A0' --iconBackgroundColorDark '#6020A0' \
+            --splashBackgroundColor '#6020A0' --splashBackgroundColorDark '#6020A0'
 
       - name: Sync web bundle into Android
         run: npx cap sync android

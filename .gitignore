@@ -142,12 +142,10 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-# Capacitor native platform (generated in CI by `cap add android`)
-android/
+# Capacitor native platform (generated in CI by `cap add android`). Anchored to
+# the repo root with a leading slash so it does NOT also match the unrelated
+# fastlane/metadata/android/ tree (a bare `android/` matches any depth).
+/android/
 
-# Generated app-icon/splash PNGs (built in CI from resources/icon-foreground.png).
-# The glyph source itself — FicStash's icon foreground — IS tracked.
-resources/icon-background.png
-resources/icon-only.png
-resources/splash.png
-resources/splash-dark.png
+# resources/ holds the SOURCE icon (icon-only.png) + splash logo (logo.png), both
+# tracked. @capacitor/assets generates the per-density icons into android/ at build.
