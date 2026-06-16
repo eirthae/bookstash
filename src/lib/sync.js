@@ -110,7 +110,7 @@ export async function triggerSync({ onProgress } = {}) {
     if (gStatus === 'ongoing' || gStatus === 'complete') {
       metas = metas.filter((m) => statusMatches(m, gStatus));
     }
-    metas = metas.filter((m) => passesPrefs(m, !!langGroup));
+    metas = metas.filter((m) => passesGlobalPrefs(m, { excludedTags: shelfExcl, languages: prefs.languages }, !!langGroup));
     try {
       newMatches += await upsertMatches(g.id, metas.map((m) => ({ ...m, tag: g.label || include[0] || (langGroup && (langGroup.name)) || 'Tracked' })));
       await patchGroup(g.id, { lastChecked: new Date().toISOString() });

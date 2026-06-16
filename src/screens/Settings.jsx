@@ -3,6 +3,7 @@ import { Appbar } from '../components/chrome.jsx';
 import Icon from '../components/Icon.jsx';
 import { Segmented } from '../components/ui.jsx';
 import { fetchOfflineStats } from '../lib/library.js';
+import owlUrl from '../assets/owl.svg';
 
 // Stamped at build time from the release tag (VITE_APP_VERSION, e.g. "v0.8.10");
 // "dev" for local builds. Lets you confirm exactly which APK is installed.
@@ -89,9 +90,7 @@ export function ConnectScreen({ nav }) {
     <div className="screen view-enter">
       <Appbar back={() => nav.pop()} title="How BookStash works" />
       <div className="scroll" style={{ padding: '8px 24px 28px' }}>
-        <div style={{ width: 72, height: 72, borderRadius: 20, background: 'linear-gradient(150deg,#7828c8,#006fee)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '14px auto 18px', boxShadow: 'var(--shadow-pop)' }}>
-          <Icon icon="solar:bookmark-opened-bold" size={36} color="#fff" />
-        </div>
+        <img src={owlUrl} alt="" style={{ height: 92, display: 'block', margin: '14px auto 18px' }} />
         <div style={{ textAlign: 'center', fontSize: 21, fontWeight: 800, letterSpacing: '-.02em', marginBottom: 8 }}>Your offline shelf, on your phone</div>
         <div style={{ textAlign: 'center', fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)', maxWidth: 300, margin: '0 auto 24px' }}>
           BookStash gathers stories from several sites into one offline library — all fetched and stored on your own device. No account, no server, nothing leaves your phone. You choose what comes in.
