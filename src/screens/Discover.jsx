@@ -292,8 +292,11 @@ function DiscoveryFiltersSheet({ open, onClose, showToast, shelf = 'ao3' }) {
           <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginBottom: 10 }}>
             Hide any discovered {SHELF_LABEL[shelf]} work carrying these tags{shelf === 'ao3' ? ' — including ratings like “Explicit”' : ''}. Applies to this shelf only.
           </div>
-          <TagPicker picked={excluded} onAdd={addExcluded} onRemove={removeExcluded}
-            placeholder="Type a tag to exclude…" accent="var(--danger, #f5455c)" />
+          {shelf === 'ao3'
+            ? <TagPicker picked={excluded} onAdd={addExcluded} onRemove={removeExcluded}
+                placeholder="Search AO3 tags to exclude…" accent="var(--danger, #f5455c)" />
+            : <SubjectPicker picked={excluded} onAdd={addExcluded} onRemove={removeExcluded}
+                placeholder="Type a tag to exclude…" accent="var(--danger, #f5455c)" />}
 
           <button className="btn btn-lg btn-primary" style={{ width: '100%', marginTop: 18 }} disabled={saving} onClick={save}>
             {saving ? 'Saving…' : <><Icon icon="solar:check-circle-bold" size={18} /> Save filters</>}

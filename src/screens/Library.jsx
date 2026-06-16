@@ -389,15 +389,30 @@ function LinkRequestRow({ req, onRemove }) {
 //                ungrouped books A–Z; Standalone last.
 //   • Last added / Last read → groups ordered by their most-recent book; ditto
 //                for standalone; Standalone last.
+// Normalize an author for grouping: lowercase, collapse whitespace, and fold
+// "Lastname, Firstname" into "firstname lastname" so EPUB metadata variants of
+// the same author cluster instead of splitting into separate sections.
+function authorKey(a) {
+  let s = (a || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const m = /^([^,]+),\s*(.+)$/.exec(s);
+  if (m) s = `${m[2]} ${m[1]}`.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
 function groupBooks(works, sort = 'added', lastRead = {}) {
   const byKey = new Map();
   const ordered = [];
   const standalone = { name: 'Standalone', items: [], standalone: true };
   for (const w of works) {
-    const key = (w.seriesName || w.author || '').trim();
-    if (!key) { standalone.items.push(w); continue; }
-    let g = byKey.get(key.toLowerCase());
-    if (!g) { g = { name: w.seriesName || w.author, items: [], series: !!w.seriesName }; byKey.set(key.toLowerCase(), g); ordered.push(g); }
+    // Group by series (EPUB calibre:series) when present, else by author. The
+    // work field is `series` (not `seriesName`); keys are namespaced so a series
+    // and an author that happen to share a string don't merge.
+    const series = (w.series || '').trim();
+    const ak = authorKey(w.author);
+    if (!series && !ak) { standalone.items.push(w); continue; }
+    const key = series ? `s:${series.toLowerCase()}` : `a:${ak}`;
+    let g = byKey.get(key);
+    if (!g) { g = { name: series || w.author, items: [], series: !!series }; byKey.set(key, g); ordered.push(g); }
     g.items.push(w);
   }
   const real = [];
