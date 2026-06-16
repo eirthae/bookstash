@@ -54,11 +54,18 @@ export async function fetchHtml(url, { accept = 'text/html,application/xhtml+xml
 //     query through `params` lets the native layer build "?term=…" correctly.
 //     (The `params` key is only added when provided, so plain calls are
 //     byte-for-byte like fetchHtml.)
-export async function fetchJson(url, params) {
+export async function fetchJson(url) {
+  // For AO3's JSON endpoints (autocomplete). Accept MUST be "*/*": these JSON-only
+  // endpoints 302 → /404 for text/html or even an explicit application/json. The
+  // query goes through `params` (splitQuery) so the native layer builds "?k=v".
+  // Returns PARSED data: CapacitorHttp often auto-parses the array by content-type
+  // (despite responseType:'text'), so we keep an already-parsed value as-is and
+  // only JSON.parse when the body came back as a string.
+  const { base, params } = splitQuery(url);
   const res = await CapacitorHttp.get({
-    url,
+    url: base,
     ...(params ? { params } : {}),
-    headers: { 'User-Agent': API_UA, Accept: 'application/json, text/javascript, */*' },
+    headers: { 'User-Agent': API_UA, Accept: '*/*' },
     responseType: 'text',
   });
   let data = res && res.data;

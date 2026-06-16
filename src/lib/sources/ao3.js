@@ -1,4 +1,4 @@
-import { fetchHtml } from '../fetch.js';
+import { fetchHtml, fetchJson } from '../fetch.js';
 
 // On-device AO3 source — the JS port of FicStash's worker ao3.py. Fetches a work
 // from AO3's PUBLIC pages on the phone (native HTTP, no login) and parses clean
@@ -268,21 +268,18 @@ export async function autocompleteTag(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return [];
   // AO3 returns a JSON array [{ id, name }, …] at /autocomplete/tag?term=…
-  // fetchHtml hands the query to CapacitorHttp via `params` (no inline "?"), and
-  // the patching interceptor is off, so the native request is assembled correctly.
-  // Accept MUST be "*/*": this JSON-only endpoint 302s → /404 for an HTML or even
-  // an explicit application/json Accept header. Fully on-device — no proxy.
+  // fetchJson hands the query to CapacitorHttp via `params`, sends Accept "*/*"
+  // (this JSON-only endpoint 302s → /404 otherwise), and returns the parsed array
+  // directly — CapacitorHttp auto-parses it by content-type. Fully on-device.
   const url = `https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`;
-  const r = await fetchHtml(url, { accept: '*/*' });
+  const r = await fetchJson(url);
   if (!r || r.status < 200 || r.status >= 300) {
     throw new Error(`AO3 ${r ? r.status : '?'} @ ${(r && r.url) || url}`);
   }
-  let arr;
-  try { arr = JSON.parse(r.html); } catch (e) { arr = null; }
-  if (!Array.isArray(arr)) {
-    throw new Error(`AO3 non-JSON @ ${r.url || url}: ${(r.html || '').replace(/\s+/g, ' ').slice(0, 40)}`);
+  if (!Array.isArray(r.data)) {
+    throw new Error(`AO3 non-JSON @ ${r.url || url}: ${(r.raw || '').replace(/\s+/g, ' ').slice(0, 40)}`);
   }
-  return namesFrom(arr);
+  return namesFrom(r.data);
 }
 
 // ---- small DOM helpers -----------------------------------------------------
