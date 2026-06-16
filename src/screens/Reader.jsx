@@ -17,8 +17,8 @@ export const READER_FONTS = [
 export const READER_THEMES = [
   { value: 'dark', label: 'Dark', bg: '#121214', fg: '#cfcfd4' },
   { value: 'light', label: 'Light', bg: '#ffffff', fg: '#1f2125' },
+  { value: 'grey', label: 'Grey', bg: '#e8e8e8', fg: '#2f2d2a' },
   { value: 'sepia', label: 'Sepia', bg: '#f1e7d0', fg: '#4f4334' },
-  { value: 'yellow', label: 'Yellow', bg: '#fbf1c4', fg: '#46401f' },
 ];
 
 // Shimmer placeholder shown while a downloaded chapter's text is being fetched
@@ -243,7 +243,7 @@ export function ReaderScreen({ work: propWork, workId, chapterN = null, chapterT
           <button className="reader-icbtn" disabled={cur <= 1} style={{ opacity: cur <= 1 ? .3 : 1 }} onClick={() => goCh(cur - 1)}><Icon icon="solar:alt-arrow-left-linear" size={24} /></button>
           <button className="reader-icbtn" onClick={() => setShowSettings(true)}>
             <span style={{ fontSize: 21, fontFamily: 'var(--font-serif)', fontWeight: 600 }}>Aa</span></button>
-          <button className="reader-icbtn" onClick={() => { const i = READER_THEMES.findIndex(t => t.value === settings.theme); setSettings({ ...settings, theme: READER_THEMES[(i + 1) % 4].value }); }}>
+          <button className="reader-icbtn" onClick={() => { const i = READER_THEMES.findIndex(t => t.value === settings.theme); setSettings({ ...settings, theme: READER_THEMES[(i + 1) % READER_THEMES.length].value }); }}>
             <Icon icon="solar:pallete-2-linear" size={23} /></button>
           <button className="reader-icbtn" onClick={() => setShowTOC(true)}><Icon icon="solar:list-linear" size={23} /></button>
           <button className="reader-icbtn" disabled={cur >= total} style={{ opacity: cur >= total ? .3 : 1 }} onClick={() => goCh(cur + 1)}><Icon icon="solar:alt-arrow-right-linear" size={24} /></button>
