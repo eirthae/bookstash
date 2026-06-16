@@ -63,6 +63,9 @@ jobs:
       - name: Sync web bundle into Android
         run: npx cap sync android
 
+      - name: Stamp version (from package.json)
+        run: node scripts/set-version.mjs
+
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug
