@@ -72,7 +72,7 @@ export async function importLink(url) {
   // Scribble Hub — dedicated parser (series page + every chapter body).
   if (isShUrl(clean) && shWorkId(clean)) {
     try {
-      const w = await fetchShWork(shWorkId(clean));
+      const w = await fetchShWork(clean); // pass the full slugged URL (SH 404s on /series/{id}/)
       const work = await addWork(w, w.chaptersData);
       return { ok: true, work };
     } catch (e) {

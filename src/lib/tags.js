@@ -142,7 +142,10 @@ export async function requestSave(matchId) {
       : m.source === 'scribblehub' ? shFetchWork
       : null;
     if (fetcher) {
-      const w = await fetcher(m.sourceId);
+      // Scribble Hub needs the full slugged series URL (it 404s on /series/{id}/);
+      // the match carries it. Other sources fetch fine by id.
+      const ref = m.source === 'scribblehub' ? (m.url || m.sourceId) : m.sourceId;
+      const w = await fetcher(ref);
       if (w.restricted) { await patchMatch(m.id, { saved: true, seen: true }); return { ok: false, restricted: true }; }
       const added = await addWork({ ...w, origin: 'tag' }, w.chaptersData); // 'tag' = saved from Discovery → What's New "Saved"
       notifySavedAvailable([{ title: w.title || m.title, workId: added && added.id }]); // OS notification → tap opens the reader

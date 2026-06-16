@@ -55,12 +55,16 @@ export function parseChapter(html) {
 
 const absUrl = (u) => (u && u.startsWith('http') ? u : `${BASE}${u || ''}`);
 
-export async function fetchWork(id, { onProgress, max } = {}) {
-  const wid = String(id || '').match(/\d+/)?.[0] || workIdFromUrl(id);
+export async function fetchWork(idOrUrl, { onProgress, max } = {}) {
+  const wid = workIdFromUrl(idOrUrl) || (String(idOrUrl || '').match(/\d+/) || [])[0] || '';
   if (!wid) throw new Error('No Scribble Hub series id');
-  const r = await fetchHtml(workUrl(wid));
+  // Prefer the full canonical URL (with slug) when given one — Scribble Hub 404s
+  // on the slug-less /series/{id}/ form. Fall back to building it from the id.
+  const series = /^https?:\/\//i.test(String(idOrUrl)) ? String(idOrUrl) : workUrl(wid);
+  const r = await fetchHtml(series);
   if (!r.html || r.status >= 400) throw new Error(`Scribble Hub HTTP ${r.status || '?'}`);
   const meta = parseSeries(r.html, wid);
+  meta.url = series; // keep the working (slugged) URL for the library link + future updates
   const refs = meta._refs;
   const limit = max ? Math.min(refs.length, max) : refs.length;
   const chaptersData = [];
@@ -79,9 +83,10 @@ export async function fetchWork(id, { onProgress, max } = {}) {
   return { ...meta, words: chaptersData.reduce((s, c) => s + c.words, 0), chaptersData };
 }
 
-export async function fetchUpdates(id, stored = 0) {
-  const wid = String(id || '').match(/\d+/)?.[0] || workIdFromUrl(id);
-  const r = await fetchHtml(workUrl(wid));
+export async function fetchUpdates(idOrUrl, stored = 0) {
+  const wid = workIdFromUrl(idOrUrl) || (String(idOrUrl || '').match(/\d+/) || [])[0] || '';
+  const series = /^https?:\/\//i.test(String(idOrUrl)) ? String(idOrUrl) : workUrl(wid);
+  const r = await fetchHtml(series);
   if (!r.html || r.status >= 400) throw new Error(`Scribble Hub HTTP ${r.status || '?'}`);
   const meta = parseSeries(r.html, wid);
   const refs = meta._refs;
@@ -119,7 +124,7 @@ export function parseGenreFeed(xml) {
     const summary = decodeEntities(stripHtml(stripCdata((item.match(/<description>([\s\S]*?)<\/description>/i) || [])[1] || '')));
     const tags = (item.match(/<category>([\s\S]*?)<\/category>/gi) || [])
       .map((c) => ({ t: decodeEntities(stripHtml(stripCdata(c.replace(/<\/?category>/gi, '')))), k: 'freeform' })).filter((x) => x.t);
-    out.push({ source: 'scribblehub', sourceId: id, title, author, summary, fandom: '', tags, status: 'ongoing', words: 0, language: 'English', url: workUrl(id) });
+    out.push({ source: 'scribblehub', sourceId: id, title, author, summary, fandom: '', tags, status: 'ongoing', words: 0, language: 'English', url: (link || '').trim() || workUrl(id) });
   }
   return out;
 }

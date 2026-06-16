@@ -39,7 +39,8 @@ export async function triggerSync({ onProgress } = {}) {
         total = fresh.chapters || 0; status = fresh.status;
         if (total > stored) newChs = (fresh.chaptersData || []).filter((c) => c.n > stored);
       } else { // royalroad / scribblehub — re-read index page, fetch chapters beyond stored
-        const upd = await (w.source === 'royalroad' ? rrFetchUpdates : shFetchUpdates)(w.sourceId, stored);
+        const ref = w.source === 'scribblehub' ? (w.url || w.sourceId) : w.sourceId; // SH needs the slugged URL
+        const upd = await (w.source === 'royalroad' ? rrFetchUpdates : shFetchUpdates)(ref, stored);
         total = upd.total; status = upd.status; newChs = upd.newChapters;
       }
       if (newChs.length) {
