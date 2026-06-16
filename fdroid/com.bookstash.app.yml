@@ -5,13 +5,15 @@ AuthorName: eirthae
 SourceCode: https://github.com/eirthae/bookstash
 IssueTracker: https://github.com/eirthae/bookstash/issues
 
+AutoName: BookStash
+
 RepoType: git
 Repo: https://github.com/eirthae/bookstash.git
 
 Builds:
   - versionName: 0.8.27
     versionCode: 8027
-    commit: v0.8.27
+    commit: c5cd47a1fc04d75a1c2d1f2dbf23c1775642251b
     subdir: android/app
     sudo:
       - apt-get update
@@ -19,9 +21,15 @@ Builds:
     gradle:
       - yes
     prebuild:
-      - npm ci
+      - cd ../.. && npm ci
       - npm run build
       - npx cap sync android
+    scandelete:
+      - node_modules/esbuild
+      - node_modules/@esbuild
+      - node_modules/@capacitor/cli
+      - node_modules/@img
+      - node_modules/jszip
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
