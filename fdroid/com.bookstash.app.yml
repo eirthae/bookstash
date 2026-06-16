@@ -1,9 +1,3 @@
-# BookStash is a Capacitor app: the native android/ project is generated at build
-# time, so the recipe regenerates it (cap add/sync) and stamps the version from
-# package.json (scripts/set-version.mjs) before assembling the release variant.
-# Title / description / changelog / screenshots are pulled from the repo's
-# fastlane/metadata. (This file is also kept in the source repo under fdroid/.)
-
 Categories:
   - Reading
 License: GPL-3.0-only
@@ -21,17 +15,17 @@ Builds:
     sudo:
       - apt-get update
       - apt-get install -y nodejs npm
-    subdir: android/app
-    prebuild:
+    output: android/app/build/outputs/apk/release/app-release-unsigned.apk
+    build:
       - npm ci
       - npm run build
       - npx cap add android
-      - node ../../scripts/set-version.mjs
+      - npx --yes @capacitor/assets generate --android --assetPath resources --iconBackgroundColor '#6020A0' --iconBackgroundColorDark '#6020A0' --splashBackgroundColor '#6020A0' --splashBackgroundColorDark '#6020A0'
       - npx cap sync android
-    gradle:
-      - yes
+      - node scripts/set-version.mjs
+      - cd android && ./gradlew assembleRelease
 
-AutoUpdateMode: Version
-UpdateCheckMode: Tags
+AutoUpdateMode: None
+UpdateCheckMode: None
 CurrentVersion: 0.8.26
 CurrentVersionCode: 8026
