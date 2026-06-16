@@ -179,8 +179,8 @@ export function SearchField({ placeholder, value, onChange, onSubmit, onBlur }) 
         onChange={e => onChange && onChange(e.target.value)}
         onBlur={() => onBlur && onBlur()}
         onKeyDown={e => e.key === 'Enter' && onSubmit && onSubmit()} />
-      {value ? <button className="iconbtn" style={{ width: 26, height: 26 }} onClick={() => onChange('')}>
-        <Icon icon="solar:close-circle-bold" size={18} color="var(--text-tertiary)" /></button> : null}
+      {value ? <button className="iconbtn" style={{ width: 28, height: 28 }} onClick={() => onChange('')}>
+        <Icon icon="solar:close-circle-bold" size={20} color="var(--text-tertiary)" /></button> : null}
     </div>
   );
 }

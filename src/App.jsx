@@ -11,7 +11,9 @@ import { SeriesScreen } from './screens/Series.jsx';
 import { ReaderScreen } from './screens/Reader.jsx';
 import { SettingsScreen, ConnectScreen } from './screens/Settings.jsx';
 import { AboutScreen } from './screens/About.jsx';
-import { fetchWorks } from './lib/library.js';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { fetchWorks, mapWork } from './lib/library.js';
+import { getWork } from './lib/db.js';
 import { triggerSync } from './lib/sync.js';
 
 const READER_DEFAULTS = { theme: 'dark', font: 'serif', size: 19, leading: 1.70, margin: 26, brightness: 1 };
@@ -103,6 +105,20 @@ export default function App() {
       if (s.stack && s.stack.length) { setNavDir('back'); setStack((st) => st.slice(0, -1)); return; }
       if (s.tab !== 'library') { setTab('library'); return; }
       CapApp.minimizeApp();
+    }).then((h) => { handle = h; }).catch(() => {});
+    return () => { if (handle) handle.remove(); };
+  }, []);
+
+  // Tapping a "saved work ready to read" notification deep-links into its reader.
+  useEffect(() => {
+    let handle;
+    LocalNotifications.addListener('localNotificationActionPerformed', async (action) => {
+      const wid = action && action.notification && action.notification.extra && action.notification.extra.workId;
+      if (!wid) return;
+      try {
+        const row = await getWork(wid);
+        if (row) { setNavDir('fwd'); setStack((s) => [...s, { screen: 'reader', props: { work: mapWork(row) } }]); }
+      } catch (e) { /* ignore — notification tap is best-effort */ }
     }).then((h) => { handle = h; }).catch(() => {});
     return () => { if (handle) handle.remove(); };
   }, []);

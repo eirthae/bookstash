@@ -144,8 +144,8 @@ export async function requestSave(matchId) {
     if (fetcher) {
       const w = await fetcher(m.sourceId);
       if (w.restricted) { await patchMatch(m.id, { saved: true, seen: true }); return { ok: false, restricted: true }; }
-      await addWork({ ...w, origin: 'tag' }, w.chaptersData); // 'tag' = saved from Discovery → What's New "Saved"
-      notifySavedAvailable([{ title: w.title || m.title }]); // OS notification: it's downloaded now
+      const added = await addWork({ ...w, origin: 'tag' }, w.chaptersData); // 'tag' = saved from Discovery → What's New "Saved"
+      notifySavedAvailable([{ title: w.title || m.title, workId: added && added.id }]); // OS notification → tap opens the reader
     }
     await patchMatch(m.id, { saved: true, seen: true });
     return { ok: true };

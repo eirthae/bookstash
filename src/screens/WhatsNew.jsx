@@ -72,7 +72,7 @@ function SavedWorkRow({ w, onOpen, onRemove }) {
 }
 
 export function WhatsNewScreen({ chapters, nav }) {
-  const [tab, setTab] = useState('chapters');
+  const [tab, setTab] = useState('saved');
   const [typeFilter, setTypeFilter] = useState('all'); // all | ao3 | stories | books
   const [toast, showToast] = useToast();
   const [bump, setBump] = useState(0); // re-fetch trigger (pull-to-refresh)
@@ -127,11 +127,11 @@ export function WhatsNewScreen({ chapters, nav }) {
     <div className="screen">
       <Appbar large title="What's New" sub={`${chapterList.length + savedList.length} updates`} />
       <div className="wn-seg" style={{ marginBottom: 16 }}>
+        <button className={tab === 'saved' ? 'on' : ''} onClick={() => setTab('saved')}>
+          New works <span className="pill">{savedList.length}</span>
+        </button>
         <button className={tab === 'chapters' ? 'on' : ''} onClick={() => setTab('chapters')}>
           New chapters <span className="pill">{chapterList.length}</span>
-        </button>
-        <button className={tab === 'saved' ? 'on' : ''} onClick={() => setTab('saved')}>
-          Saved <span className="pill">{savedList.length}</span>
         </button>
       </div>
       <PullToRefresh className="scroll fade-enter" key={tab} onRefresh={doSync} style={{ padding: '0 20px 24px' }}>
