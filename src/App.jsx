@@ -30,11 +30,12 @@ export default function App() {
   // Navigation: a tab + a stack of pushed screens (detail / reader / about).
   const [tab, setTab] = useState('library');
   const [stack, setStack] = useState([]);
+  const [navDir, setNavDir] = useState('fwd'); // last nav direction → drives the screen transition (fwd: slide in from right, back: slide in from left)
   const [gotoShelf, setGotoShelf] = useState(null); // { shelf, nonce } after a custom add
   const nav = useRef();
   nav.current = {
-    push: (screen, props = {}) => setStack((s) => [...s, { screen, props }]),
-    pop: () => setStack((s) => s.slice(0, -1)),
+    push: (screen, props = {}) => { setNavDir('fwd'); setStack((s) => [...s, { screen, props }]); },
+    pop: () => { setNavDir('back'); setStack((s) => s.slice(0, -1)); },
     reset: (t) => { setStack([]); setTab(t); },
   };
 
@@ -99,7 +100,7 @@ export default function App() {
     CapApp.addListener('backButton', () => {
       const s = navState.current;
       if (s.addOpen) { setAddOpen(false); return; }
-      if (s.stack && s.stack.length) { setStack((st) => st.slice(0, -1)); return; }
+      if (s.stack && s.stack.length) { setNavDir('back'); setStack((st) => st.slice(0, -1)); return; }
       if (s.tab !== 'library') { setTab('library'); return; }
       CapApp.minimizeApp();
     }).then((h) => { handle = h; }).catch(() => {});
@@ -133,7 +134,7 @@ export default function App() {
     <div className="app-root" data-mode={resolvedMode}>
       <div className="viewport">
         {renderTab()}
-        {top && <div className="screen" style={{ zIndex: 30 }}>{renderTop()}</div>}
+        {top && <div className={`screen ${navDir === 'back' ? 'view-back' : 'view-enter'}`} key={stack.length} style={{ zIndex: 30 }}>{renderTop()}</div>}
       </div>
       {showNav && <BottomNav active={tab} onTab={switchTab} onAdd={() => setAddOpen((o) => !o)} addActive={addOpen} />}
       {showNav && <AddMenu open={addOpen} onClose={() => setAddOpen(false)} onChanged={onAdded} />}

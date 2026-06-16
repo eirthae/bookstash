@@ -723,7 +723,7 @@ export function TagResultsScreen({ tag, nav, onLeave }) {
 
   const list = items || [];
   return (
-    <div className="screen view-enter">
+    <div className="screen">
       <Appbar
         back={leave}
         title={tag.name}
@@ -798,7 +798,7 @@ export function LaterScreen({ nav, onLeave }) {
 
   const list = items || [];
   return (
-    <div className="screen view-enter">
+    <div className="screen">
       <Appbar back={leave} title="Later" sub={`${list.length} kept · metadata only`} />
       <div className="scroll" style={{ padding: '4px 20px 24px' }}>
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 14 }}>

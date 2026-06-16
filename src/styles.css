@@ -373,8 +373,10 @@ input,textarea { font-family:inherit; }
 /* screen push/pop transitions */
 .view-enter { animation:pushIn .32s cubic-bezier(.2,.8,.2,1); }
 .view-pop   { animation:popOut .26s cubic-bezier(.4,0,.2,1) forwards; }
+.view-back  { animation:popReveal .3s cubic-bezier(.2,.8,.2,1); }
 @keyframes pushIn { from { transform:translateX(28px); opacity:0; } to { transform:none; opacity:1; } }
 @keyframes popOut { to { transform:translateX(34px); opacity:0; } }
+@keyframes popReveal { from { transform:translateX(-28px); opacity:0; } to { transform:none; opacity:1; } }
 .fade-enter { animation:fadeIn .28s ease; }
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 

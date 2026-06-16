@@ -156,7 +156,7 @@ export function StoryDetailScreen({ work, suggestion, onSaved, onRemoved, onRelo
   };
 
   return (
-    <div className="screen view-enter">
+    <div className="screen">
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 260, background: `linear-gradient(170deg, ${pal[0]}, ${pal[1]})`, opacity: .9 }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,.18), var(--surface) 96%)' }}></div>
       </div>
