@@ -70,6 +70,18 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug
 
+      # Validate the F-Droid build path: F-Droid assembles the *release* variant
+      # (unsigned; it signs with its own key). We only ship the debug APK, but
+      # building release here catches recipe/gradle problems before the fdroiddata
+      # merge request rather than during review.
+      - name: Validate release variant (F-Droid build)
+        working-directory: android
+        run: |
+          ./gradlew assembleRelease
+          ls -la app/build/outputs/apk/release/
+          test -f app/build/outputs/apk/release/app-release-unsigned.apk \
+            && echo "release variant assembled OK (F-Droid path validated)."
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
