@@ -15,9 +15,9 @@ RepoType: git
 Repo: https://github.com/eirthae/bookstash.git
 
 Builds:
-  - versionName: 0.8.23
-    versionCode: 8023
-    commit: v0.8.23
+  - versionName: 0.8.26
+    versionCode: 8026
+    commit: v0.8.26
     sudo:
       - apt-get update
       - apt-get install -y nodejs npm
@@ -33,5 +33,5 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.8.23
-CurrentVersionCode: 8023
+CurrentVersion: 0.8.26
+CurrentVersionCode: 8026
