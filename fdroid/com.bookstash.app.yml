@@ -1,14 +1,8 @@
-# F-Droid metadata for BookStash — DRAFT for the fdroiddata submission.
-#
-# This file is the source of truth for what we will submit. To submit, copy it to
-# fdroiddata/metadata/com.bookstash.app.yml in a fork of
-# https://gitlab.com/fdroid/fdroiddata and open a merge request.
-#
-# BookStash is a Capacitor app whose native android/ project is generated at build
-# time, so the build recipe regenerates it (cap add/sync) and stamps the version
-# from package.json via scripts/set-version.mjs before assembling the RELEASE
-# variant (F-Droid signs the result). The Node build step is the part most likely
-# to need tweaks during MR review — see FDROID.md.
+# BookStash is a Capacitor app: the native android/ project is generated at build
+# time, so the recipe regenerates it (cap add/sync) and stamps the version from
+# package.json (scripts/set-version.mjs) before assembling the release variant.
+# Title / description / changelog / screenshots are pulled from the repo's
+# fastlane/metadata. (This file is also kept in the source repo under fdroid/.)
 
 Categories:
   - Reading
@@ -16,10 +10,6 @@ License: GPL-3.0-only
 AuthorName: eirthae
 SourceCode: https://github.com/eirthae/bookstash
 IssueTracker: https://github.com/eirthae/bookstash/issues
-
-AutoName: BookStash
-Description: |-
-  See fastlane/metadata/android/en-US/full_description.txt in the source repo.
 
 RepoType: git
 Repo: https://github.com/eirthae/bookstash.git
