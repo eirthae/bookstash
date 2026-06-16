@@ -13,18 +13,22 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 // sends) is treated as a known API client and let through.
 const API_UA = 'BookStash/1.0 (+https://github.com/eirthae/bookstash; personal reading app)';
 
-export async function fetchHtml(url) {
+export async function fetchHtml(url, { accept = 'text/html,application/xhtml+xml' } = {}) {
   // Hand any inline query to the native layer via `params` instead of leaving it
   // in the url string: CapacitorHttp's Android interceptor mangles a literal "?"
   // (it lands percent-encoded on the path → AO3/others 404). With the patching
   // interceptor disabled (CapacitorHttp.enabled:false) AND the query passed as
   // params, the native request is assembled correctly. One central fix covers
   // autocomplete, tag search, and series paging.
+  //
+  // `accept` is overridable because AO3's JSON-only endpoints (autocomplete) 302
+  // → /404 for an HTML Accept header — they require a bare "*/*". HTML pages are
+  // fine with the default.
   const { base, params } = splitQuery(url);
   const res = await CapacitorHttp.get({
     url: base,
     ...(params ? { params } : {}),
-    headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml' },
+    headers: { 'User-Agent': UA, Accept: accept },
     responseType: 'text',
     // follow redirects (default), and don't throw on non-2xx — we inspect status
   });

@@ -270,9 +270,10 @@ export async function autocompleteTag(term) {
   // AO3 returns a JSON array [{ id, name }, …] at /autocomplete/tag?term=…
   // fetchHtml hands the query to CapacitorHttp via `params` (no inline "?"), and
   // the patching interceptor is off, so the native request is assembled correctly.
-  // Fully on-device — no backend, no proxy.
+  // Accept MUST be "*/*": this JSON-only endpoint 302s → /404 for an HTML or even
+  // an explicit application/json Accept header. Fully on-device — no proxy.
   const url = `https://${AO3_HOST}/autocomplete/tag?term=${encodeURIComponent(q)}`;
-  const r = await fetchHtml(url);
+  const r = await fetchHtml(url, { accept: '*/*' });
   if (!r || r.status < 200 || r.status >= 300) {
     throw new Error(`AO3 ${r ? r.status : '?'} @ ${(r && r.url) || url}`);
   }
