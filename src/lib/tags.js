@@ -5,6 +5,8 @@ import {
 } from './db.js';
 import { hashStr, COVER_PALETTES } from '../data/sample.js';
 import { searchTags as ao3Search, autocompleteTag, fetchWork } from './sources/ao3.js';
+import { fetchWork as rrFetchWork } from './sources/royalroad.js';
+import { fetchWork as shFetchWork } from './sources/scribblehub.js';
 import { fetchWorks } from './library.js';
 import { kickSync } from './sync.js';
 import { notifySavedAvailable } from './notify.js';
@@ -130,8 +132,17 @@ export async function requestSave(matchId) {
   const m = (matches || []).find((x) => x.id === matchId);
   if (!m) return { ok: false };
   try {
-    if (m.source === 'ao3') {
-      const w = await fetchWork(m.sourceId);
+    // Download the full work for any source that has fetchable text, and store it
+    // with origin 'tag' so it lands in What's New "Saved". Royal Road and Scribble
+    // Hub were previously skipped — saves were marked but never downloaded, so
+    // they never appeared. Books are metadata-only (no downloadable text) — just
+    // mark them saved.
+    const fetcher = m.source === 'ao3' ? fetchWork
+      : m.source === 'royalroad' ? rrFetchWork
+      : m.source === 'scribblehub' ? shFetchWork
+      : null;
+    if (fetcher) {
+      const w = await fetcher(m.sourceId);
       if (w.restricted) { await patchMatch(m.id, { saved: true, seen: true }); return { ok: false, restricted: true }; }
       await addWork({ ...w, origin: 'tag' }, w.chaptersData); // 'tag' = saved from Discovery → What's New "Saved"
       notifySavedAvailable([{ title: w.title || m.title }]); // OS notification: it's downloaded now
