@@ -9,7 +9,7 @@ import owlUrl from '../assets/owl.svg';
 // "dev" for local builds. Lets you confirm exactly which APK is installed.
 const APP_VERSION = (import.meta.env && import.meta.env.VITE_APP_VERSION) || 'dev';
 
-export function SettingsScreen({ appMode, setAppMode, nav }) {
+export function SettingsScreen({ appMode, setAppMode, autoSync, setAutoSync, nav }) {
   const [storage, setStorage] = useState(undefined); // undefined=loading, null=unavailable
   useEffect(() => { fetchOfflineStats().then(setStorage).catch(() => setStorage(null)); }, []);
   const storageLine = storage === undefined ? 'Counting…'
@@ -39,6 +39,19 @@ export function SettingsScreen({ appMode, setAppMode, nav }) {
               { value: 'light', label: 'Light', icon: 'solar:sun-2-linear' },
               { value: 'dark', label: 'Dark', icon: 'solar:moon-linear' },
               { value: 'system', label: 'System', icon: 'solar:smartphone-linear' },
+            ]} />
+          </div>
+        </SetSection>
+
+        <SetSection label="Updates" note="When on, opening the app checks the sites you follow for new chapters (at most every 6h). Off by default — the app makes no connection unless you tap Sync, search, or add a work.">
+          <div className="set-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div className="set-ic"><Icon icon="solar:refresh-circle-linear" size={18} /></div>
+              <div className="set-tx"><div className="set-h">Auto-refresh on open</div><div className="set-d">Check followed works when the app opens</div></div>
+            </div>
+            <Segmented value={autoSync ? 'on' : 'off'} onChange={(v) => setAutoSync(v === 'on')} options={[
+              { value: 'off', label: 'Off', icon: 'solar:bell-off-linear' },
+              { value: 'on', label: 'On', icon: 'solar:bell-bing-bold' },
             ]} />
           </div>
         </SetSection>

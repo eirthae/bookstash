@@ -28,6 +28,9 @@ export default function App() {
   const [works, setWorks] = useState(null);      // null = still loading
   const [addOpen, setAddOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [autoSync, setAutoSync] = useState(false); // opt-in: refresh followed works when the app opens
+
+
 
   // Navigation: a tab + a stack of pushed screens (detail / reader / about).
   const [tab, setTab] = useState('library');
@@ -47,6 +50,7 @@ export default function App() {
     Preferences.get({ key: 'bs-reader' }).then(({ value }) => {
       if (alive && value) { try { setReader((r) => ({ ...r, ...JSON.parse(value) })); } catch (e) {} }
     }).catch(() => {});
+    Preferences.get({ key: 'bs-autosync' }).then(({ value }) => { if (alive && value === '1') setAutoSync(true); }).catch(() => {});
     return () => { alive = false; };
   }, []);
   // Track the OS color scheme so the "System" mode follows the phone.
@@ -58,17 +62,19 @@ export default function App() {
     return () => { mq.removeEventListener ? mq.removeEventListener('change', fn) : mq.removeListener(fn); };
   }, []);
   const changeMode = (m) => { setAppMode(m); Preferences.set({ key: 'bs-mode', value: m }).catch(() => {}); };
+  const changeAutoSync = (v) => { setAutoSync(v); Preferences.set({ key: 'bs-autosync', value: v ? '1' : '0' }).catch(() => {}); };
   const updateReader = (next) => { setReader(next); Preferences.set({ key: 'bs-reader', value: JSON.stringify(next) }).catch(() => {}); };
   const resolvedMode = appMode === 'system' ? (systemDark ? 'dark' : 'light') : appMode;
 
   const reload = useCallback(() => { fetchWorks().then((w) => setWorks(w || [])).catch(() => setWorks([])); }, []);
   useEffect(() => { reload(); }, [reload]);
 
-  // Auto-sync on app open (throttled to every 6h), so followed fics + tracked
-  // tags refresh on their own without tapping Sync. Reloads the library if the
-  // run pulled anything new. (True background sync — app closed — is a later
-  // native add; this covers "updates when you open the app".)
+  // Auto-refresh on app open (throttled to every 6h), so followed fics + tracked
+  // tags refresh on their own without tapping Sync. OPT-IN: off by default, so a
+  // fresh install makes zero automatic network connections — the user enables it
+  // in Settings. (Manual Sync / pull-to-refresh always works regardless.)
   useEffect(() => {
+    if (!autoSync) return;
     const LAST = 'bs-last-sync', SIX_H = 6 * 3600 * 1000;
     let last = 0; try { last = Number(localStorage.getItem(LAST) || 0); } catch (e) { /* ignore */ }
     if (Date.now() - last < SIX_H) return;
@@ -76,7 +82,7 @@ export default function App() {
       try { localStorage.setItem(LAST, String(Date.now())); } catch (e) { /* ignore */ }
       if (r && r.ok && (r.newChapters || r.newMatches || r.seriesAdded)) reload();
     }).catch(() => {});
-  }, [reload]);
+  }, [reload, autoSync]);
 
   const removeFromLibrary = (id) => setWorks((ws) => (ws || []).filter((w) => w.id !== id));
   // After a custom add, jump to Library and open the added work's shelf (so a
@@ -128,7 +134,7 @@ export default function App() {
     if (tab === 'library') return <LibraryScreen works={works} onRemove={removeFromLibrary} onReload={reload} refreshKey={refreshKey} gotoShelf={gotoShelf} nav={n} />;
     if (tab === 'whatsnew') return <WhatsNewScreen chapters={[]} matches={[]} nav={n} />;
     if (tab === 'discover') return <DiscoverScreen nav={n} />;
-    return <SettingsScreen appMode={appMode} setAppMode={changeMode} nav={n} />;
+    return <SettingsScreen appMode={appMode} setAppMode={changeMode} autoSync={autoSync} setAutoSync={changeAutoSync} nav={n} />;
   };
   const renderTop = () => {
     const n = nav.current, p = top.props || {};
