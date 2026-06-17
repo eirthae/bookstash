@@ -185,7 +185,7 @@ export function ReaderScreen({ work: propWork, workId, chapterN = null, chapterT
           )}
 
           <div className="eoc" style={{ display: !hasReal && !demo ? 'none' : undefined }}>
-            <div className="star"><span className="ln"></span><Icon icon="solar:asterisk-linear" size={16} /><span className="ln"></span></div>
+            <div className="star"><span className="ln"></span><Icon icon="solar:star-linear" size={16} /><span className="ln"></span></div>
             {cur < total ? (
               <button className="nextbtn pressable" onClick={(e) => { e.stopPropagation(); goCh(cur + 1); }}>
                 Next chapter <Icon icon="solar:arrow-right-linear" size={18} />
