@@ -1,0 +1,12 @@
+Reader & discovery polish (ported from the sibling app):
+
+- AO3 chat / texting / social-media work skins now render as styled blocks,
+  while prose keeps your own font and spacing. Toggle in reader settings.
+- Smoother back navigation; screens keep their scroll position.
+- Series pages: flat Download-all / Follow buttons, delete a whole series.
+- Edit a tracked tag group and re-discover from scratch.
+- What's New shows richer new-chapter rows and declutters after 5 days.
+- Library cards show word count and main tags; discovery cards float
+  content warnings to the front.
+- Add by link: detects an AO3 series link (queues every work) and flags works
+  already in your library.

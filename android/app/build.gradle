@@ -7,8 +7,8 @@ android {
         applicationId "com.bookstash.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8028
-        versionName "0.8.28"
+        versionCode 8029
+        versionName "0.8.29"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
