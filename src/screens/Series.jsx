@@ -12,13 +12,14 @@ import { getSeriesFollow, requestSeriesDownload, setSeriesFollow } from '../lib/
 export function SeriesScreen({ seriesId, seriesName, nav, onReload }) {
   const [works, setWorks] = useState(null); // null = loading
   const [follow, setFollow] = useState(null); // followed_series row or null
+  const [queued, setQueued] = useState(false); // a download-all/follow row exists (works arrive each sync)
   const [busy, setBusy] = useState(false);
   const [toast, showToast] = useToast();
 
   useEffect(() => {
     let alive = true;
     fetchSeriesWorks(seriesId).then((r) => { if (alive) setWorks(r || []); }).catch(() => { if (alive) setWorks([]); });
-    getSeriesFollow(seriesId).then((r) => { if (alive) setFollow(r); }).catch(() => {});
+    getSeriesFollow(seriesId).then((r) => { if (alive) { setFollow(r); setQueued(!!r); } }).catch(() => {});
     return () => { alive = false; };
   }, [seriesId]);
 
@@ -31,7 +32,7 @@ export function SeriesScreen({ seriesId, seriesName, nav, onReload }) {
     if (busy) return; setBusy(true);
     const res = await requestSeriesDownload(seriesId, name);
     setBusy(false);
-    if (res.ok) { setFollow({ seriesId, seriesName: name, follow: true }); showToast('Downloading the whole series — works arrive each sync', 'solar:check-circle-bold'); }
+    if (res.ok) { setFollow({ seriesId, seriesName: name, follow: true }); setQueued(true); showToast('Downloading the whole series — works arrive each sync', 'solar:check-circle-bold'); }
     else showToast(res.error || 'Couldn’t queue the series', 'solar:danger-triangle-linear');
   };
   const toggleFollow = async () => {
@@ -39,7 +40,7 @@ export function SeriesScreen({ seriesId, seriesName, nav, onReload }) {
     const next = !following;
     const res = await setSeriesFollow(seriesId, name, next);
     setBusy(false);
-    if (res.ok) { setFollow(next ? { seriesId, seriesName: name, follow: true } : null); showToast(next ? 'Following series — new works download automatically' : 'Unfollowed series', next ? 'solar:bell-bold' : 'solar:bell-off-linear'); }
+    if (res.ok) { setFollow(next ? { seriesId, seriesName: name, follow: true } : null); if (next) setQueued(true); showToast(next ? 'Following series — new works download automatically' : 'Unfollowed series', next ? 'solar:bell-bold' : 'solar:bell-off-linear'); }
     else showToast(res.error || 'Couldn’t update', 'solar:danger-triangle-linear');
   };
 
@@ -48,12 +49,12 @@ export function SeriesScreen({ seriesId, seriesName, nav, onReload }) {
       <Appbar large title={name} sub={`${count} work${count === 1 ? '' : 's'} downloaded`} back={() => nav.pop()} />
       {toast}
       <div className="scroll" style={{ padding: '0 20px 24px' }}>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-          <button className="btn btn-primary" style={{ flex: 1 }} disabled={busy} onClick={downloadAll}>
-            <Icon icon="solar:download-minimalistic-bold" size={18} /> Download all
+        <div style={{ display: 'flex', gap: 4, marginBottom: 18, marginLeft: -10 }}>
+          <button className={`btn btn-text ${queued ? 'is-done' : ''}`} style={{ flex: 'none' }} disabled={busy || queued} onClick={downloadAll}>
+            <Icon icon={queued ? 'solar:check-circle-bold' : busy ? 'solar:refresh-linear' : 'solar:download-minimalistic-bold'} size={18} /> {queued ? 'Downloading' : busy ? 'Queueing…' : 'Download all'}
           </button>
-          <button className="btn" style={{ flex: 1, border: '1px solid var(--border)', color: following ? 'var(--accent)' : 'var(--text-secondary)' }} disabled={busy} onClick={toggleFollow}>
-            <Icon icon={following ? 'solar:bell-bold' : 'solar:bell-linear'} size={18} /> {following ? 'Following' : 'Follow'}
+          <button className={`btn btn-text ${following ? 'is-done' : ''}`} style={{ flex: 'none' }} disabled={busy} onClick={toggleFollow}>
+            <Icon icon={following ? 'solar:bell-bing-bold' : 'solar:bell-linear'} size={18} /> {following ? 'Following' : 'Follow'}
           </button>
         </div>
 

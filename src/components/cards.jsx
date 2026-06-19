@@ -1,6 +1,7 @@
 import Icon from './Icon.jsx';
 import { Cover, FetchButton, StatusBadge, FrozenBadge, OriginBadges, TagChip, fmtWords } from './ui.jsx';
 import { COVER_PALETTES } from '../data/sample.js';
+import { pickCardTags } from '../lib/cardtags.js';
 
 // ---- Library list card (horizontal) --------------------------------------
 export function LibraryCard({ work, onOpen, onDelete }) {
@@ -16,25 +17,33 @@ export function LibraryCard({ work, onOpen, onDelete }) {
       <div className="meta">
         <div className="story-title" style={{ marginBottom: 2, paddingRight: onDelete ? 30 : 0 }}>{work.customTitle || work.title}</div>
         <div className="story-sub" style={{ marginBottom: 7 }}>by {work.author}</div>
-        <div className="chiprow" style={{ marginBottom: 8 }}>
+        <div className="chiprow" style={{ marginBottom: 8, alignItems: 'center' }}>
           {work.frozen ? <FrozenBadge /> : <StatusBadge status={work.status} updated={work.updated} />}
+          {work.words ? <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-tertiary)' }}>· {fmtWords(work.words)}</span> : null}
           <OriginBadges bookmarked={work.bookmarked} subscribed={work.subscribed} />
         </div>
         <div className="summary" style={{ flex: 1 }}>{work.summary}</div>
-        <div style={{ marginTop: 9 }}>
-          {work.offline === false ? (
-            <div className="metarow" style={{ color: 'var(--text-tertiary)' }}><Icon icon="solar:clock-circle-linear" size={14} /><span>Downloads on next sync</span></div>
-          ) : work.progress >= 1 ? (
-            <div className="metarow"><Icon icon="solar:check-circle-bold" size={14} color="var(--success)" /><span>Finished</span></div>
-          ) : work.progress > 0 ? (
-            <>
-              <div className="progress" style={{ marginBottom: 5 }}><i style={{ width: `${work.progress * 100}%` }}></i></div>
-              <div className="metarow"><span>Chapter {work.lastChapter} of {work.chaptersTotal}</span><span>·</span><span>{Math.round(work.progress * 100)}%</span></div>
-            </>
-          ) : (
-            <div className="metarow" style={{ color: 'var(--accent)' }}><Icon icon="solar:book-bold" size={14} /><span>{work.unread ? 'Not started' : 'New — start reading'}</span></div>
-          )}
-        </div>
+        {(work.tags && work.tags.length) ? (
+          <div className="chiprow" style={{ marginTop: 8, gap: 6 }}>
+            {work.tags.slice(0, 3).map((t, i) => (
+              <TagChip key={i} t={typeof t === 'string' ? t : t.t} k={typeof t === 'string' ? undefined : t.k} />
+            ))}
+          </div>
+        ) : null}
+        {(work.offline === false || work.progress >= 1 || work.progress > 0) && (
+          <div style={{ marginTop: 9 }}>
+            {work.offline === false ? (
+              <div className="metarow" style={{ color: 'var(--text-tertiary)' }}><Icon icon="solar:clock-circle-linear" size={14} /><span>Downloads on next sync</span></div>
+            ) : work.progress >= 1 ? (
+              <div className="metarow"><Icon icon="solar:check-circle-bold" size={14} color="var(--success)" /><span>Finished</span></div>
+            ) : (
+              <>
+                <div className="progress" style={{ marginBottom: 5 }}><i style={{ width: `${work.progress * 100}%` }}></i></div>
+                <div className="metarow"><span>Chapter {work.lastChapter} of {work.chaptersTotal}</span><span>·</span><span>{Math.round(work.progress * 100)}%</span></div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -71,7 +80,7 @@ export function GridCard({ work, onOpen }) {
 
 // ---- Suggestion card (+ save / dismiss) -----------------------------------
 // saveState: 'idle' → 'queued' (worker will fetch on next sync) → 'saved' (in library)
-export function SuggestionCard({ work, onSave, saveState = 'idle', onDismiss, onOpen, cta = 'Open', onLater, laterIcon = 'solar:bookmark-linear', laterTitle = 'Save for later' }) {
+export function SuggestionCard({ work, onSave, saveState = 'idle', onDismiss, onOpen, cta = 'Open', onLater, laterIcon = 'solar:bookmark-linear', laterTitle = 'Save for later', excludeTags = [] }) {
   return (
     <div className="libcard fade-enter">
       <div className="meta">
@@ -86,7 +95,7 @@ export function SuggestionCard({ work, onSave, saveState = 'idle', onDismiss, on
         </div>
         <div className="summary" style={{ margin: '7px 0' }}>{work.summary}</div>
         <div className="chiprow" style={{ marginBottom: 9 }}>
-          {work.tags.slice(0, 3).map((t, i) => <TagChip key={i} t={t.t} k={t.k} />)}
+          {pickCardTags(work.tags, excludeTags).map((t, i) => <TagChip key={i} t={t.t} k={t.k} />)}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div className="metarow"><StatusBadge status={work.status} /><span>·</span><span>{fmtWords(work.words)}</span></div>

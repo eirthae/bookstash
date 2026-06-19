@@ -479,6 +479,13 @@ input,textarea { font-family:inherit; }
 .btn-surface { background:var(--surface-2); color:var(--text-primary); }
 .btn-bordered { background:transparent; color:var(--text-primary); border:1.5px solid var(--border-strong); }
 .btn-block { width:100%; }
+/* flat text action — no fill, no stroke. State is shown by changing the icon,
+   label and text colour (accent → muted "done"), not a filled pill. */
+.btn-text { background:transparent; color:var(--accent); padding:0 10px; }
+.btn-text:hover { opacity:.82; }
+.btn-text:active { color:var(--accent-strong); }
+.btn-text.is-done { color:var(--text-tertiary); }
+.btn-text:disabled { opacity:1; }
 
 /* search field */
 .searchfield { display:flex; align-items:center; gap:10px; height:46px; padding:0 14px; border-radius:var(--radius-full); background:var(--surface-2); color:var(--text-secondary); }

@@ -418,12 +418,12 @@ function SeriesCard({ seriesId, seriesName, part, showToast, nav }) {
         </div>
         <Icon icon="solar:alt-arrow-right-linear" size={18} color="var(--text-tertiary)" />
       </button>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className={`btn ${queued ? 'btn-surface' : 'btn-primary'}`} style={{ flex: 1 }} disabled={busy || queued} onClick={download}>
-          <Icon icon={queued ? 'solar:check-read-linear' : 'solar:download-minimalistic-bold'} size={18} />
-          {queued ? 'Queued' : 'Download all works'}
+      <div style={{ display: 'flex', gap: 4, marginLeft: -10 }}>
+        <button className={`btn btn-text ${queued ? 'is-done' : ''}`} style={{ flex: 'none' }} disabled={busy || queued} onClick={download}>
+          <Icon icon={queued ? 'solar:check-circle-bold' : busy ? 'solar:refresh-linear' : 'solar:download-minimalistic-bold'} size={18} />
+          {queued ? 'Downloading' : busy ? 'Queueing…' : 'Download all works'}
         </button>
-        <button className={`btn ${follow ? 'btn-flat' : 'btn-surface'}`} style={{ flex: 'none', width: 132 }} disabled={busy || follow === null} onClick={toggleFollow}>
+        <button className={`btn btn-text ${follow ? 'is-done' : ''}`} style={{ flex: 'none' }} disabled={busy || follow === null} onClick={toggleFollow}>
           <Icon icon={follow ? 'solar:bell-bing-bold' : 'solar:bell-linear'} size={18} />
           {follow ? 'Following' : 'Follow series'}
         </button>
