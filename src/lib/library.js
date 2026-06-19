@@ -30,6 +30,7 @@ export function mapWork(row) {
     summary: row.summary || '',
     tags: Array.isArray(row.tags) ? row.tags : [],
     language: row.language || '',
+    workSkin: row.workSkin || '', // AO3 work-skin CSS (chat/social), sanitized at render
     seriesName: isUpload ? (row.series || row.seriesName || '') : '',
     seriesIndex: isUpload ? (row.seriesIndex ?? null) : null,
     ao3SeriesName: isAo3 ? (row.series || '') : '',

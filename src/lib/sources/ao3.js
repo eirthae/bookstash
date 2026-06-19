@@ -49,6 +49,20 @@ function cleanBody(bodyEl) {
   return { html: (node.innerHTML || '').trim(), words: wordCount(node.textContent) };
 }
 
+// The author's work-skin CSS (chat bubbles / texting UIs / social cards), if any.
+// AO3 emits it as <style id="workskin"> (sometimes a plain <style> referencing
+// #workskin). Captured raw here; sanitized + scoped at render by lib/workskin.js.
+// Capped so a runaway skin can't bloat storage.
+function extractWorkSkin(doc) {
+  const byId = doc.querySelector('style#workskin');
+  if (byId && byId.textContent) return byId.textContent.slice(0, 20000);
+  for (const s of doc.querySelectorAll('style')) {
+    const css = s.textContent || '';
+    if (/#workskin\b/.test(css)) return css.slice(0, 20000);
+  }
+  return '';
+}
+
 // Pure parser: a full-work AO3 HTML page → { ...meta, chapters[] } | { restricted }.
 // `restricted` means a logged-out guest can't read it (members-only) — the caller
 // shows a "read on AO3" label, exactly like FicStash.
@@ -128,6 +142,7 @@ export function parseWork(html, id = '') {
     series,
     seriesIndex,
     ao3SeriesId,
+    workSkin: extractWorkSkin(doc),
     url: workUrl(id),
     chaptersData: chapters,
   };

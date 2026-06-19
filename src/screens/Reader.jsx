@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Icon from '../components/Icon.jsx';
 import { Sheet, fmtWords } from '../components/ui.jsx';
 import { WORKS, CHAPTERS, READER_PARAS } from '../data/sample.js';
 import { fetchChapters, fetchSeriesWorks } from '../lib/library.js';
 import { hasSupabase } from '../lib/backend.js';
 import { markRead, getReadingPos, getChapterPos, saveReadingPos } from '../lib/reading.js';
+import { sanitizeWorkSkin, chapterUsesSkin, neutralizeRemoteImages } from '../lib/workskin.js';
 
 export const READER_FONTS = [
   { value: 'serif', label: 'Serif', css: 'var(--font-serif)' },
@@ -84,6 +85,13 @@ export function ReaderScreen({ work: propWork, workId, chapterN = null, chapterT
   const ch = curChapter || { title: '', words: 0 };
   const [chrome, setChrome] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+
+  // AO3 work-skin (chat bubbles / texting UI). Sanitized: scoped to .ws-skin,
+  // prose-typography rules dropped, remote resources stripped (F-Droid). Applied
+  // only when "Author styling" is on AND the chapter actually has classed blocks.
+  const skinCss = useMemo(() => sanitizeWorkSkin(work.workSkin, '.ws-skin'), [work.workSkin]);
+  const useSkin = settings.authorStyling !== false && !!skinCss
+    && hasReal && !!(curChapter && curChapter.content) && chapterUsesSkin(curChapter.content);
   const [showTOC, setShowTOC] = useState(false);
   const scrollRef = useRef(null);
   const [scrollPct, setScrollPct] = useState(0);
@@ -171,7 +179,10 @@ export function ReaderScreen({ work: propWork, workId, chapterN = null, chapterT
             <ChapterSkeleton />
           ) : hasReal ? (
             curChapter && curChapter.content
-              ? <div className="chapter-body" dangerouslySetInnerHTML={{ __html: curChapter.content }} />
+              ? <>
+                  {useSkin && <style dangerouslySetInnerHTML={{ __html: skinCss }} />}
+                  <div className={`chapter-body${useSkin ? ' ws-skin' : ''}`} dangerouslySetInnerHTML={{ __html: neutralizeRemoteImages(curChapter.content) }} />
+                </>
               : <p style={{ color: 'var(--reader-text-dim)' }}>This chapter hasn’t been downloaded yet.</p>
           ) : demo ? (
             <>
@@ -291,6 +302,18 @@ function ReaderSettingsSheet({ open, onClose, settings, setSettings }) {
         <input className="range" type="range" min="0.4" max="1" step="0.02" value={settings.brightness}
           onChange={e => set('brightness', +e.target.value)} />
         <Icon icon="solar:sun-2-bold" size={22} color="var(--reader-ui)" />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 2px 6px' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--reader-ui)' }}>Author block styling</div>
+          <div style={{ fontSize: 11.5, color: 'var(--reader-text-dim)', marginTop: 2 }}>Chat &amp; texting blocks as the author styled them. Prose always uses your settings above.</div>
+        </div>
+        <button aria-pressed={settings.authorStyling !== false} onClick={() => set('authorStyling', settings.authorStyling === false)}
+          style={{ flex: 'none', width: 50, height: 30, borderRadius: 999, border: 'none', cursor: 'pointer', position: 'relative',
+            background: settings.authorStyling !== false ? 'var(--reader-accent, #9353d3)' : 'var(--reader-border, rgba(128,128,128,.35))', transition: 'background .15s' }}>
+          <span style={{ position: 'absolute', top: 3, left: settings.authorStyling !== false ? 23 : 3, width: 24, height: 24, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+        </button>
       </div>
     </Sheet>
   );

@@ -121,6 +121,7 @@ export async function addWork(meta, chapters, addedAt) {
     series: meta.series || '',
     seriesIndex: meta.seriesIndex ?? null,
     ao3SeriesId: meta.ao3SeriesId || '',
+    workSkin: meta.workSkin || '',                      // AO3 work-skin CSS (chat/social styling), sanitized at render
     origin: meta.origin || '',                          // 'tag' = saved from Discovery; '' otherwise (link/upload)
     source: meta.source || 'upload',
     sourceId: meta.sourceId || '',                      // work id at the source (for refresh/follow/dedupe)

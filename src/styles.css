@@ -144,6 +144,8 @@ input,textarea { font-family:inherit; }
 .chapter-body { font-family:var(--font-serif); font-size:18px; line-height:1.72; color:var(--text-primary); }
 .chapter-body p { margin:0 0 1.05em; }
 .chapter-body img { max-width:100%; height:auto; }
+/* placeholder swapped in for any remote <img> the reader won't hotlink (F-Droid) */
+.fs-img-missing { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; margin:4px 0; border-radius:10px; background:rgba(128,128,128,.14); color:var(--reader-text-dim,var(--text-tertiary)); font-family:var(--font-sans); font-size:12.5px; }
 .chapter-body h1,.chapter-body h2,.chapter-body h3 { font-weight:700; line-height:1.3; margin:1.4em 0 .5em; }
 
 /* Reader chrome (top/bottom bars) is defined once, FicStash-exact, in the
