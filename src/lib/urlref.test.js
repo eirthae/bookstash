@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseWorkRef } from './urlref.js';
+import { parseWorkRef, parseSeriesRef } from './urlref.js';
 
 test('AO3 work URL → ao3 + numeric id', () => {
   assert.deepEqual(parseWorkRef('https://archiveofourown.org/works/12345'), { source: 'ao3', id: '12345' });
@@ -26,4 +26,12 @@ test('unknown / non-work / empty URLs → null', () => {
   assert.equal(parseWorkRef(''), null);
   assert.equal(parseWorkRef(null), null);
   assert.equal(parseWorkRef(undefined), null);
+});
+
+test('AO3 series URL → series ref; a work URL is not a series', () => {
+  assert.deepEqual(parseSeriesRef('https://archiveofourown.org/series/45678'), { source: 'ao3', seriesId: '45678' });
+  assert.equal(parseSeriesRef('https://archiveofourown.org/works/12345'), null);
+  // Scribble Hub uses /series/ for works — must NOT be treated as an AO3 series.
+  assert.equal(parseSeriesRef('https://www.scribblehub.com/series/123456/title/'), null);
+  assert.equal(parseSeriesRef(''), null);
 });

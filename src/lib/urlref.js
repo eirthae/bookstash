@@ -12,3 +12,13 @@ export function parseWorkRef(url) {
   if (u.includes('scribblehub.com')     && (m = u.match(/\/series\/(\d+)/)))  return { source: 'scribblehub', id: m[1] };
   return null;
 }
+
+// An AO3 *series* link (archiveofourown.org/series/<id>) → { source:'ao3',
+// seriesId }. Used by the add-by-link flow to queue the whole series instead of
+// trying to import the series page as a single work. AO3-gated, so Scribble
+// Hub's /series/ work URLs never false-match.
+export function parseSeriesRef(url) {
+  const u = (url || '').toLowerCase();
+  const m = u.includes('archiveofourown.org') && u.match(/\/series\/(\d+)/);
+  return m ? { source: 'ao3', seriesId: m[1] } : null;
+}

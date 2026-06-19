@@ -84,7 +84,9 @@ export function AddMenu({ open, onClose, onChanged }) {
     if (!u || state.kind === 'busy') return;
     setState({ kind: 'busy' });
     const res = await importLink(u);
-    if (res.ok) { setUrl(''); setState({ kind: 'idle' }); onChanged?.('Added — saved offline.', res.work); onClose(); }
+    if (res.ok && res.series) { setUrl(''); setState({ kind: 'idle' }); onChanged?.('Queued the whole series — works arrive on the next sync.', null); onClose(); }
+    else if (res.ok) { setUrl(''); setState({ kind: 'idle' }); onChanged?.('Added — saved offline.', res.work); onClose(); }
+    else if (res.duplicate) setState({ kind: 'info', msg: res.error || 'Already in your library.' });
     else if (res.restricted) setState({ kind: 'restricted', url: res.url, msg: res.error });
     else setState({ kind: 'error', msg: res.error });
   };
@@ -119,6 +121,7 @@ export function AddMenu({ open, onClose, onChanged }) {
                 autoCapitalize="off" autoCorrect="off" spellCheck={false} inputMode="url" />
             </div>
 
+            {state.kind === 'info' && <div className="add-note" style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>✓ {state.msg}</div>}
             {state.kind === 'error' && <div className="add-note err">{state.msg}</div>}
             {state.kind === 'restricted' && (
               <div className="add-note warn">

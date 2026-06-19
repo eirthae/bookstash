@@ -1,5 +1,7 @@
 import { parseFile, isSupportedUpload } from './epub.js';
-import { addWork } from './db.js';
+import { addWork, getAllWorks } from './db.js';
+import { parseWorkRef, parseSeriesRef } from './urlref.js';
+import { requestSeriesDownload } from './series.js';
 import { fetchHtml } from './fetch.js';
 import { extractArticle } from './extract.js';
 import { isAo3Url, workIdFromUrl, fetchWork as fetchAo3Work } from './sources/ao3.js';
@@ -42,6 +44,25 @@ export async function importFiles(files, onProgress) {
 export async function importLink(url) {
   const clean = (url || '').trim();
   if (!/^https?:\/\/\S+\.\S+/i.test(clean)) return { ok: false, error: 'Enter a full link starting with http(s)://' };
+
+  // An AO3 *series* link queues the whole series (download-all + follow); the
+  // works arrive over the next syncs, the same as tapping "Download all" on a
+  // series page. (Borrowed from the FicStash intake tool.)
+  const seriesRef = parseSeriesRef(clean);
+  if (seriesRef) {
+    const r = await requestSeriesDownload(seriesRef.seriesId);
+    return r.ok ? { ok: true, series: true, seriesId: seriesRef.seriesId } : { ok: false, error: r.error || 'Couldn’t queue that series.' };
+  }
+
+  // Duplicate detection: if this exact work is already in the library, say so
+  // rather than silently fetching + re-adding a second copy.
+  const ref = parseWorkRef(clean);
+  if (ref) {
+    try {
+      const existing = (await getAllWorks()).find((w) => w.source === ref.source && String(w.sourceId) === String(ref.id));
+      if (existing) return { ok: false, duplicate: true, work: existing, error: 'Already in your library.' };
+    } catch (e) { /* non-fatal — fall through to the normal add */ }
+  }
 
   // AO3 links use the dedicated parser (clean title/author/summary/tags/series +
   // every chapter) instead of the generic single-page extractor.
