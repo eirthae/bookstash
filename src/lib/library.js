@@ -113,11 +113,14 @@ function dayBucketLocal(iso) {
   return { day, time };
 }
 
-// Works the user SAVED from Discovery that are now downloaded (origin 'tag').
-// The "Saved" feed in What's New — your picks, fetched — not the raw match feed.
+// The What's New "recently added" feed: works you added in the last 5 days —
+// saved from Discovery (origin 'tag'), added by link, or uploaded — newest
+// first. The window keeps the feed recent and declutters on its own; everything
+// stays in the library regardless of age.
+const SAVED_RETENTION_DAYS = 5;
 export async function fetchSavedWorks() {
   const rows = await getAllWorks();
-  return savedWorksFrom((rows || []).map(mapWork))
+  return savedWorksFrom((rows || []).map(mapWork), { days: SAVED_RETENTION_DAYS, now: Date.now() })
     .map((w) => { const { day, time } = dayBucketLocal(w.createdAt); return { ...w, day, time, fresh: true }; });
 }
 

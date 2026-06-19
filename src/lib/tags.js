@@ -10,6 +10,11 @@ import { fetchWork as shFetchWork } from './sources/scribblehub.js';
 import { fetchWorks } from './library.js';
 import { kickSync } from './sync.js';
 import { notifySavedAvailable } from './notify.js';
+import { withinRetention } from './shelving.js';
+
+// What's New chapter-update feed only shows updates from the last few days so it
+// declutters on its own; the chapters stay downloaded in the library regardless.
+const CHAPTER_FEED_DAYS = 5;
 
 // Tracked tag groups + matches — the on-device version of FicStash's tags.js.
 // A "group" is one or more tags tracked together (matchMode 'all' = AND, 'any' =
@@ -183,7 +188,10 @@ function dayBucket(iso) {
 export async function fetchNewChapters() {
   const [rows, works] = await Promise.all([getChapterUpdates(), fetchWorks()]);
   const byId = Object.fromEntries((works || []).map((w) => [w.id, w]));
-  return (rows || []).filter((r) => byId[r.workId]).map((r) => ({
+  const now = Date.now();
+  return (rows || [])
+    .filter((r) => byId[r.workId] && withinRetention(r.at, CHAPTER_FEED_DAYS, now))
+    .map((r) => ({
     id: r.id, workId: r.workId, chapterN: r.n, chapter: r.chapter,
     title: r.title, author: r.author, fandom: r.fandom, words: r.words,
     fetched: true, fresh: !r.seen, time: relTime(r.at), day: dayBucket(r.at), work: byId[r.workId],

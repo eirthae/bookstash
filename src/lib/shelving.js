@@ -161,9 +161,34 @@ export function seriesWorksFrom(works, ao3SeriesId) {
     .sort((a, b) => (a.ao3SeriesIndex ?? 1e9) - (b.ao3SeriesIndex ?? 1e9) || (a.title || '').localeCompare(b.title || ''));
 }
 
-// Saved-from-Discovery works (origin 'tag'), newest first (operates on mapped works).
-export function savedWorksFrom(works) {
+// True if an ISO timestamp is within the last `days` of `now` (epoch ms).
+// days<=0 or no `now` = no limit; an undated/garbage timestamp counts as
+// in-window (we can't age out what we can't date).
+export function withinRetention(iso, days, now) {
+  if (!days || !now) return true;
+  const t = Date.parse(iso || '');
+  if (Number.isNaN(t)) return true;
+  return t >= now - days * 86400000;
+}
+
+// A work is complete once it reaches its declared final chapter, even if the
+// source's own "complete" flag still lags. declaredTotal null/0 = unknown →
+// status unchanged. Pure helper for the sync engine's auto-complete.
+export function resolveCompletion(status, count, declaredTotal) {
+  if (status === 'complete') return 'complete';
+  if (declaredTotal && count >= declaredTotal) return 'complete';
+  return status || 'ongoing';
+}
+
+// The What's New "recently added" feed: works the user added themselves —
+// origin 'tag' (saved from Discovery), 'link' (added by URL) or 'upload'
+// (imported file) — newest first. With { days, now } it also drops anything
+// older than the retention window so the feed stays recent and declutters on
+// its own (the works stay in the library regardless). Operates on mapped works.
+const SAVED_ORIGINS = new Set(['tag', 'link', 'upload']);
+export function savedWorksFrom(works, { days = 0, now = 0 } = {}) {
   return (works || [])
-    .filter((w) => (w.origin || '') === 'tag')
+    .filter((w) => SAVED_ORIGINS.has(w.origin || 'link'))
+    .filter((w) => withinRetention(w.createdAt, days, now))
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }

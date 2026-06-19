@@ -4,6 +4,7 @@ import {
   fandomName, workTagSet, shelfOf, sortWorks, orderGroups, groupFics,
   filterWorks, savedTypeOf, statusMatches, seriesWorksFrom, savedWorksFrom,
   passesGlobalPrefs, discoveryShelfForSource, excludedForShelf,
+  withinRetention, resolveCompletion,
 } from './shelving.js';
 
 // ---- fandomName -----------------------------------------------------------
@@ -181,11 +182,39 @@ test('seriesWorksFrom filters by series id and orders by part', () => {
 });
 
 // ---- savedWorksFrom -------------------------------------------------------
-test('savedWorksFrom keeps origin=tag, newest first', () => {
+test('savedWorksFrom keeps tag/link/upload origins, newest first', () => {
   const works = [
     { id: 'a', origin: 'tag', createdAt: '2026-01-01' },
     { id: 'b', origin: 'link', createdAt: '2026-02-01' },
     { id: 'c', origin: 'tag', createdAt: '2026-03-01' },
+    { id: 'd', origin: 'upload', createdAt: '2026-02-15' },
   ];
-  assert.deepEqual(savedWorksFrom(works).map((w) => w.id), ['c', 'a']);
+  assert.deepEqual(savedWorksFrom(works).map((w) => w.id), ['c', 'd', 'b', 'a']);
+});
+
+test('savedWorksFrom drops works older than the retention window', () => {
+  const now = Date.parse('2026-03-10T00:00:00Z');
+  const works = [
+    { id: 'old', origin: 'link', createdAt: '2026-01-01T00:00:00Z' },  // months ago → out
+    { id: 'new', origin: 'link', createdAt: '2026-03-08T00:00:00Z' },  // 2 days ago → in
+    { id: 'undated', origin: 'tag' },                                  // no date → kept
+  ];
+  assert.deepEqual(savedWorksFrom(works, { days: 5, now }).map((w) => w.id).sort(), ['new', 'undated']);
+});
+
+// ---- withinRetention ------------------------------------------------------
+test('withinRetention: window, no-limit, and undated', () => {
+  const now = Date.parse('2026-03-10T00:00:00Z');
+  assert.equal(withinRetention('2026-03-08T00:00:00Z', 5, now), true);
+  assert.equal(withinRetention('2026-03-01T00:00:00Z', 5, now), false);
+  assert.equal(withinRetention('2026-01-01T00:00:00Z', 0, now), true); // days=0 → no limit
+  assert.equal(withinRetention('', 5, now), true);                     // undated → kept
+});
+
+// ---- resolveCompletion ----------------------------------------------------
+test('resolveCompletion: declared final chapter completes the work', () => {
+  assert.equal(resolveCompletion('ongoing', 12, 12), 'complete'); // reached the end
+  assert.equal(resolveCompletion('ongoing', 12, 14), 'ongoing');  // more to come
+  assert.equal(resolveCompletion('ongoing', 5, null), 'ongoing'); // unknown total → unchanged
+  assert.equal(resolveCompletion('complete', 3, null), 'complete'); // already complete stays
 });

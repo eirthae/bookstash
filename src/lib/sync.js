@@ -5,7 +5,7 @@ import { fetchDiscoveryPrefs } from './discovery.js';
 import { fetchUpdates as rrFetchUpdates, searchTags as rrSearchTags } from './sources/royalroad.js';
 import { fetchUpdates as shFetchUpdates, searchTags as shSearchTags } from './sources/scribblehub.js';
 import { discoverBooks } from './goodreads.js';
-import { statusMatches, passesGlobalPrefs, discoveryShelfForSource, excludedForShelf } from './shelving.js';
+import { statusMatches, passesGlobalPrefs, discoveryShelfForSource, excludedForShelf, resolveCompletion } from './shelving.js';
 
 // On-device sync engine. This is the job FicStash's server worker does, run on
 // the phone instead: re-check every followed (ongoing) work for new chapters and
@@ -32,17 +32,20 @@ export async function triggerSync({ onProgress } = {}) {
     if (onProgress) onProgress({ done: checked, total: ongoing.length, title: w.title });
     try {
       const stored = w.chapters || 0;
-      let newChs = [], total = stored, status = w.status;
+      let newChs = [], total = stored, status = w.status, declaredTotal = w.chaptersTotal ?? null;
       if (w.source === 'ao3') {
         const fresh = await fetchWork(w.sourceId);
         if (fresh.restricted) continue;
-        total = fresh.chapters || 0; status = fresh.status;
+        total = fresh.chapters || 0; status = fresh.status; declaredTotal = fresh.chaptersTotal ?? declaredTotal;
         if (total > stored) newChs = (fresh.chaptersData || []).filter((c) => c.n > stored);
       } else { // royalroad / scribblehub — re-read index page, fetch chapters beyond stored
         const ref = w.source === 'scribblehub' ? (w.url || w.sourceId) : w.sourceId; // SH needs the slugged URL
         const upd = await (w.source === 'royalroad' ? rrFetchUpdates : shFetchUpdates)(ref, stored);
-        total = upd.total; status = upd.status; newChs = upd.newChapters;
+        total = upd.total; status = upd.status; declaredTotal = upd.chaptersTotal ?? declaredTotal; newChs = upd.newChapters;
       }
+      // Auto-complete: reaching the declared final chapter finishes a work even if
+      // the source's own "complete" flag hasn't flipped yet.
+      status = resolveCompletion(status, total, declaredTotal);
       if (newChs.length) {
         await appendChapters(w.id, newChs);
         await recordChapterUpdate(w, newChs);
