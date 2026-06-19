@@ -1,0 +1,7 @@
+First F-Droid release.
+
+- Fully on-device: no backend, no accounts, no tracking.
+- Library with fanfic / web-serial / book shelves, search and tag filtering.
+- Tag discovery with per-shelf excludes and completion-status filters.
+- Distraction-free reader with adjustable fonts and position memory.
+- Series following and What's New.
