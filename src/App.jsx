@@ -164,7 +164,7 @@ export default function App() {
     if (item.screen === 'reader') return <ReaderScreen work={p.work} workId={p.workId} chapterN={p.chapterN} chapterTitle={p.chapterTitle} settings={reader} setSettings={updateReader} nav={n} />;
     if (item.screen === 'about') return <AboutScreen onBack={n.pop} />;
     if (item.screen === 'connect') return <ConnectScreen nav={n} />;
-    if (item.screen === 'tagresults') return <TagResultsScreen tag={p.tag} onLeave={p.onLeave} onSaved={reload} nav={n} />;
+    if (item.screen === 'tagresults') return <TagResultsScreen tag={p.tag} onLeave={p.onLeave} onEdit={p.onEdit} onSaved={reload} nav={n} />;
     if (item.screen === 'later') return <LaterScreen onLeave={p.onLeave} onSaved={reload} nav={n} />;
     return null;
   };

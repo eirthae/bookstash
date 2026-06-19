@@ -261,6 +261,17 @@ export async function removeGroup(id) {
   await txDone(t);
 }
 
+// Delete a group's stored matches without removing the group itself — used when
+// editing a group's tags so stale matches don't linger and it reseeds on sync.
+export async function clearMatches(groupId) {
+  const db = await openDB();
+  const t = tx(db, ['matches'], 'readwrite');
+  const idx = t.objectStore('matches').index('byGroup');
+  const keysReq = idx.getAllKeys(IDBKeyRange.only(groupId));
+  keysReq.onsuccess = () => { (keysReq.result || []).forEach((k) => t.objectStore('matches').delete(k)); };
+  await txDone(t);
+}
+
 // Insert matches for a group, skipping ones already seen (dedup on id). Returns
 // how many were newly added.
 export async function upsertMatches(groupId, metas) {

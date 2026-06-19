@@ -1,4 +1,5 @@
 import { kickSync } from './sync.js';
+import { getAllWorks, deleteWork } from './db.js';
 
 const KEY = 'bs-followed-series';
 function readAll() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } }
@@ -34,6 +35,22 @@ export function getAllFollowedSeries() {
 export function removeFollowedSeries(seriesId) {
   const m = readAll();
   if (m[String(seriesId)]) { delete m[String(seriesId)]; writeAll(m); }
+}
+
+// Delete a whole AO3 series from the library: remove every downloaded work that
+// belongs to it, and drop its follow/queue record. On-device equivalent of
+// FicStash's deleteSeries (which hides the rows server-side).
+export async function deleteSeries(seriesId) {
+  if (!seriesId) return { ok: false, error: 'No series id' };
+  try {
+    const works = await getAllWorks();
+    const mine = (works || []).filter((w) => (w.ao3SeriesId || '') === String(seriesId));
+    for (const w of mine) { await deleteWork(w.id); } // eslint-disable-line no-await-in-loop
+    removeFollowedSeries(seriesId);
+    return { ok: true, removed: mine.length };
+  } catch (e) {
+    return { ok: false, error: e?.message || 'Could not delete the series' };
+  }
 }
 
 // Toggle "follow this series" (keep watching for newly-added works).

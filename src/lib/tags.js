@@ -1,5 +1,5 @@
 import {
-  newId, putGroup, getGroups, patchGroup, removeGroup,
+  newId, putGroup, getGroups, patchGroup, removeGroup, clearMatches,
   getMatches, patchMatch, addWork,
   getChapterUpdates, markChapterUpdateSeen as dbMarkChapterSeen,
 } from './db.js';
@@ -66,6 +66,26 @@ export async function createGroup({ label = '', tags, excludedTags = [], matchMo
   await putGroup(group);
   kickSync(); // start fetching matches on-device
   return mapGroup(group);
+}
+
+// Edit an existing group's tags/excludes/match-mode/status. Clears its stored
+// matches and nulls lastChecked so it reseeds from scratch on the next sync
+// (otherwise stale matches from the old tags would linger). Mirrors FicStash's
+// updateGroup. Returns the remapped group.
+export async function updateGroup(groupId, { label = '', tags, excludedTags = [], matchMode = 'all', status = 'all' }) {
+  const clean = cleanTags(tags);
+  if (!clean.length) throw new Error('A group needs at least one tag');
+  await patchGroup(groupId, {
+    label, tags: clean, excludedTags: cleanTags(excludedTags),
+    matchMode: matchMode === 'any' ? 'any' : 'all',
+    status: ['ongoing', 'complete'].includes(status) ? status : 'all',
+    lastChecked: null,
+  });
+  await clearMatches(groupId);
+  kickSync();
+  const groups = await getGroups();
+  const g = groups.find((x) => x.id === groupId);
+  return g ? mapGroup(g) : null;
 }
 
 export async function createLanguageGroup({ code, name, label = '' }) {

@@ -4,7 +4,7 @@ import Icon from '../components/Icon.jsx';
 import { SearchField, EmptyState, TAG_COLOR, useToast, Sheet, Segmented, PullToRefresh } from '../components/ui.jsx';
 import { TagTile, SuggestionCard } from '../components/cards.jsx';
 import {
-  fetchTrackedGroups, createGroup, createLanguageGroup, deleteGroup,
+  fetchTrackedGroups, createGroup, createLanguageGroup, deleteGroup, updateGroup,
   fetchMatches, dismissMatch, markGroupSeen, autocompleteTags, requestSave,
   markLater, unmarkLater, fetchLaterMatches,
 } from '../lib/tags.js';
@@ -41,6 +41,7 @@ const isSavableSource = (src) => src !== 'books';
 export function DiscoverScreen({ nav }) {
   const [groups, setGroups] = useState(null); // null = loading
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [editGroup, setEditGroup] = useState(null); // group being edited (null = creating)
   const [addLangOpen, setAddLangOpen] = useState(false); // follow a new language
   const [filtersOpen, setFiltersOpen] = useState(false); // global discovery filters
   const [tagShelf, setTagShelf] = useState('ao3'); // ao3 | sites | books
@@ -75,11 +76,13 @@ export function DiscoverScreen({ nav }) {
   ];
   const shelfCount = (id) => tags.filter((t) => shelfMatch[id](t.source)).length;
   const shelfTags = tags.filter((t) => shelfMatch[tagShelf](t.source));
-  const open = (tag) => nav.push('tagresults', { tag, onLeave: load });
+  const open = (tag) => nav.push('tagresults', { tag, onLeave: load, onEdit: (g) => { setEditGroup(g); setBuilderOpen(true); } });
   const openLater = () => nav.push('later', { onLeave: load });
 
-  const onCreated = (g) => {
+  const onCreated = (g, editing) => {
     setBuilderOpen(false);
+    setEditGroup(null);
+    if (editing) { showToast(`Updated “${g.name}” — re-discovering`); load(); return; }
     // Jump to the shelf the new group lives on, so you land on the tag you just
     // created instead of staying on whatever shelf you opened the builder from.
     const s = g && g.source;
@@ -166,7 +169,8 @@ export function DiscoverScreen({ nav }) {
         )}
       </PullToRefresh>
 
-      <TagGroupBuilder open={builderOpen} onClose={() => setBuilderOpen(false)} onCreated={onCreated}
+      <TagGroupBuilder open={builderOpen} editGroup={editGroup}
+        onClose={() => { setBuilderOpen(false); setEditGroup(null); }} onCreated={onCreated}
         initialSource={{ ao3: 'ao3', sites: 'royalroad', books: 'books' }[tagShelf] || 'ao3'} />
       <AddLanguageSheet open={addLangOpen} onClose={() => setAddLangOpen(false)}
         followedCodes={followedLangCodes} onPick={followLanguage} />
@@ -501,7 +505,7 @@ function SubjectPicker({ picked, onAdd, onRemove, placeholder = 'Search reader t
 // ---- Builder sheet: pick a source, pick tags/genres → save a group ----------
 const BUILDER_SOURCES = ['ao3', 'royalroad', 'scribblehub', 'books'];
 
-export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3', initialTags = [] }) {
+export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3', initialTags = [], editGroup = null }) {
   const [source, setSource] = useState(initialSource);
   const [picked, setPicked] = useState([]);
   const [excluded, setExcluded] = useState([]);
@@ -509,14 +513,27 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
   const [status, setStatus] = useState('all'); // all | ongoing | complete
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const editing = !!editGroup;
 
-  // Seed source + included tag(s) each time it opens — lets a story's detail
-  // page open this pre-filled with the tapped tag and the right source.
+  // Seed source + included tag(s) each time it opens. When editing, pre-fill from
+  // the existing group; otherwise seed from initialSource + the tapped tag (e.g.
+  // opened pre-filled from a story's detail page).
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    setErr('');
+    if (editGroup) {
+      const clone = (l) => (l || [])
+        .map((t) => ({ name: t.name, id: t.id ?? '', kind: t.kind || 'freeform' }))
+        .filter((t) => t.name);
+      setSource(editGroup.source || 'ao3');
+      setPicked(clone(editGroup.tags));
+      setExcluded(clone(editGroup.excludedTags));
+      setMatchMode(editGroup.matchMode || 'all');
+      setStatus(editGroup.status || 'all');
+    } else {
       setSource(initialSource || 'ao3');
       setPicked(initialTags || []);
-      setExcluded([]); setMatchMode('all'); setStatus('all'); setErr('');
+      setExcluded([]); setMatchMode('all'); setStatus('all');
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -539,14 +556,16 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
       // AO3 honours the chosen match mode. Royal Road / Scribble Hub / Books all
       // AND their tags natively now (multi tagsAdd / Series Finder / Open Library
       // subject query) and subtract excludes, so a multi-tag group is "all".
-      const g = await createGroup({
-        source,
+      const payload = {
         tags: picked,
         excludedTags: excluded,
         matchMode: isAo3 ? matchMode : 'all',
         status: isBooks ? 'all' : status,
-      });
-      onCreated(g);
+      };
+      const g = editing
+        ? await updateGroup(editGroup.id, { ...payload, label: editGroup.label || '' })
+        : await createGroup({ source, ...payload });
+      onCreated(g, editing);
     } catch (e) {
       setErr(e?.message ? String(e.message) : 'Could not save — check your connection.');
     } finally {
@@ -555,16 +574,18 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title="Track a tag group" maxH="88vh">
+    <Sheet open={open} onClose={onClose} title={editing ? 'Edit tag group' : 'Track a tag group'} maxH="88vh">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <div>
-          <div className="section-label" style={{ marginBottom: 8 }}>Source</div>
-          <Segmented
-            value={source}
-            onChange={changeSource}
-            options={BUILDER_SOURCES.map((s) => ({ value: s, label: sourceLabel(s) }))}
-          />
-        </div>
+        {!editing && (
+          <div>
+            <div className="section-label" style={{ marginBottom: 8 }}>Source</div>
+            <Segmented
+              value={source}
+              onChange={changeSource}
+              options={BUILDER_SOURCES.map((s) => ({ value: s, label: sourceLabel(s) }))}
+            />
+          </div>
+        )}
 
         <div>
           <div className="section-label" style={{ marginBottom: 8 }}>
@@ -666,9 +687,14 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
         )}
 
         {err && <div style={{ color: 'var(--danger, #f5455c)', fontSize: 13 }}>{err}</div>}
+        {editing && (
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: -4 }}>
+            Saving clears this group's current matches and re-discovers from scratch on the next sync.
+          </div>
+        )}
 
         <button className="btn btn-lg btn-primary btn-block" disabled={busy || !picked.length} onClick={save} style={{ opacity: busy || !picked.length ? 0.6 : 1 }}>
-          {busy ? 'Saving…' : `Track this ${picked.length > 1 ? 'group' : noun}`}
+          {busy ? 'Saving…' : editing ? 'Save changes' : `Track this ${picked.length > 1 ? 'group' : noun}`}
         </button>
       </div>
     </Sheet>
@@ -676,7 +702,7 @@ export function TagGroupBuilder({ open, onClose, onCreated, initialSource = 'ao3
 }
 
 // ---- Results: works the worker found for a tracked group -------------------
-export function TagResultsScreen({ tag, nav, onLeave, onSaved }) {
+export function TagResultsScreen({ tag, nav, onLeave, onSaved, onEdit }) {
   const [items, setItems] = useState(null); // null = loading
   const [titleExpanded, setTitleExpanded] = useState(false); // tap title to see full tag-group name
   const [toast, showToast] = useToast();
@@ -740,7 +766,10 @@ export function TagResultsScreen({ tag, nav, onLeave, onSaved }) {
         back={leave}
         title={tag.name}
         sub={`${tag.count ?? list.length} works · ${kindLabel}`}
-        actions={[{ icon: 'solar:trash-bin-trash-linear', onClick: removeGroup }]}
+        actions={[
+          ...(onEdit && tag.kind !== 'language' ? [{ icon: 'solar:pen-2-linear', onClick: () => { onEdit(tag); nav.pop(); } }] : []),
+          { icon: 'solar:trash-bin-trash-linear', onClick: removeGroup },
+        ]}
         onTitleClick={() => setTitleExpanded((v) => !v)}
         titleExpanded={titleExpanded}
       />

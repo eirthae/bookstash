@@ -4,7 +4,7 @@ import Icon from '../components/Icon.jsx';
 import { useToast } from '../components/ui.jsx';
 import { LibraryCard } from '../components/cards.jsx';
 import { fetchSeriesWorks } from '../lib/library.js';
-import { getSeriesFollow, requestSeriesDownload, setSeriesFollow } from '../lib/series.js';
+import { getSeriesFollow, requestSeriesDownload, setSeriesFollow, deleteSeries } from '../lib/series.js';
 
 // A single AO3 series: every downloaded work in reading order, plus the
 // download-all / follow actions. Reached by tapping a series name in the library
@@ -14,6 +14,7 @@ export function SeriesScreen({ seriesId, seriesName, nav, onReload }) {
   const [follow, setFollow] = useState(null); // followed_series row or null
   const [queued, setQueued] = useState(false); // a download-all/follow row exists (works arrive each sync)
   const [busy, setBusy] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
   const [toast, showToast] = useToast();
 
   useEffect(() => {
@@ -43,12 +44,27 @@ export function SeriesScreen({ seriesId, seriesName, nav, onReload }) {
     if (res.ok) { setFollow(next ? { seriesId, seriesName: name, follow: true } : null); if (next) setQueued(true); showToast(next ? 'Following series — new works download automatically' : 'Unfollowed series', next ? 'solar:bell-bold' : 'solar:bell-off-linear'); }
     else showToast(res.error || 'Couldn’t update', 'solar:danger-triangle-linear');
   };
+  const removeSeries = async () => {
+    if (busy) return; setBusy(true);
+    const res = await deleteSeries(seriesId);
+    setBusy(false);
+    if (res.ok) { onReload && onReload(); nav.pop(); }
+    else { setConfirmDel(false); showToast(res.error || 'Couldn’t delete the series', 'solar:danger-triangle-linear'); }
+  };
 
   return (
     <div className="screen">
-      <Appbar large title={name} sub={`${count} work${count === 1 ? '' : 's'} downloaded`} back={() => nav.pop()} />
+      <Appbar large title={name} sub={`${count} work${count === 1 ? '' : 's'} downloaded`} back={() => nav.pop()}
+        actions={[{ icon: 'solar:trash-bin-trash-linear', onClick: () => setConfirmDel(true) }]} />
       {toast}
       <div className="scroll" style={{ padding: '0 20px 24px' }}>
+        {confirmDel && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 16, borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+            <span style={{ flex: 1, fontSize: 13.5 }}>Delete this whole series from your library?</span>
+            <button className="btn" style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-secondary)' }} onClick={() => setConfirmDel(false)}>Cancel</button>
+            <button className="btn" style={{ padding: '8px 12px', fontSize: 13, background: 'var(--danger, #e5484d)', color: '#fff' }} onClick={removeSeries}>Delete</button>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 4, marginBottom: 18, marginLeft: -10 }}>
           <button className={`btn btn-text ${queued ? 'is-done' : ''}`} style={{ flex: 'none' }} disabled={busy || queued} onClick={downloadAll}>
             <Icon icon={queued ? 'solar:check-circle-bold' : busy ? 'solar:refresh-linear' : 'solar:download-minimalistic-bold'} size={18} /> {queued ? 'Downloading' : busy ? 'Queueing…' : 'Download all'}
